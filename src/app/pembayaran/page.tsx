@@ -104,7 +104,7 @@ export default function PaymentPage() {
                 <TableRow>
                   <TableHead className="w-[80px]">Lunas</TableHead>
                   <TableHead>Anggota</TableHead>
-                  <TableHead>Jatuh Tempo</TableHead>
+                  <TableHead>Bulan Berjalan</TableHead>
                   <TableHead className="text-right">Jumlah</TableHead>
                 </TableRow>
               </TableHeader>
@@ -135,7 +135,6 @@ export default function PaymentPage() {
                       </TableCell>
                       <TableCell>
                         {new Date(payment.dueDate).toLocaleDateString('id-ID', {
-                          day: 'numeric',
                           month: 'long',
                           year: 'numeric',
                         })}
