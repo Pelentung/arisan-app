@@ -3,15 +3,19 @@ import { FinancialSummary } from '@/components/dashboard/financial-summary';
 import { GroupsList } from '@/components/dashboard/groups-list';
 import { PaymentOverview } from '@/components/dashboard/payment-overview';
 import { WinnerHistory } from '@/components/dashboard/winner-history';
+import { RealTimeClock } from '@/components/dashboard/real-time-clock';
 
 export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       <Header title="Menu Utama" />
       <main className="flex-1 p-4 md:p-6 space-y-6">
-        <h1 className="font-headline text-2xl font-bold tracking-tight text-foreground/90 sm:text-3xl">
-          Manajemen Keuangan Arisan Keluarga Besar Alm. Kakek Ngamin
-        </h1>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <h1 className="font-headline text-2xl font-bold tracking-tight text-foreground/90 sm:text-3xl">
+            Manajemen Keuangan Arisan Keluarga Besar Alm. Kakek Ngamin
+            </h1>
+            <RealTimeClock />
+        </div>
         
         <FinancialSummary />
         
