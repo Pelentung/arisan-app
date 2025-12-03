@@ -6,7 +6,7 @@ import { SidebarNav } from '@/components/layout/sidebar-nav';
 import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
-  title: 'Arisan Ngamin',
+  title: 'Arisan Alm. Kakek Ngamin',
   description: 'Manajemen Keuangan Arisan Keluarga Besar Alm. Kakek Ngamin',
 };
 

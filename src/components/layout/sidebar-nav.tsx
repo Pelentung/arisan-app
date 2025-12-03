@@ -33,7 +33,7 @@ export function SidebarNav() {
           <div className="p-2 rounded-lg bg-primary/20 text-primary">
             <Coins className="h-6 w-6" />
           </div>
-          <h1 className="font-headline text-xl font-semibold">Arisan Ngamin</h1>
+          <h1 className="font-headline text-xl font-semibold">Arisan Alm. Kakek Ngamin</h1>
         </div>
       </SidebarHeader>
       <SidebarContent className="p-2">
