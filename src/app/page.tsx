@@ -1,6 +1,5 @@
 import { Header } from '@/components/layout/header';
 import { FinancialSummary } from '@/components/dashboard/financial-summary';
-import { WinnerSelection } from '@/components/dashboard/winner-selection';
 import { GroupsList } from '@/components/dashboard/groups-list';
 import { PaymentOverview } from '@/components/dashboard/payment-overview';
 
@@ -20,7 +19,6 @@ export default function Home() {
             <PaymentOverview />
           </div>
           <div className="flex flex-col gap-6">
-            <WinnerSelection />
             <GroupsList />
           </div>
         </div>
