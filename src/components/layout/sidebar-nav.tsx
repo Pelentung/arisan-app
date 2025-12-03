@@ -18,7 +18,7 @@ const navItems = [
   { href: '/', label: 'Dasbor', icon: LayoutDashboard },
   { href: '/laporan', label: 'Laporan', icon: FileText },
   { href: '/grup', label: 'Grup', icon: Users },
-  { href: '#', label: 'Pembayaran', icon: Coins },
+  { href: '/pembayaran', label: 'Pembayaran', icon: Coins },
   { href: '#', label: 'Yang Menarik', icon: Trophy },
 ];
 
