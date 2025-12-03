@@ -45,7 +45,7 @@ export function GroupsList() {
         <Button className="w-full" asChild variant="outline">
           <Link href="/grup">
             <Users className="mr-2 h-4 w-4" />
-            Lihat Detail Grup
+            Kelola Grup & Anggota
           </Link>
         </Button>
       </CardFooter>

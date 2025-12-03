@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { arisanData, type Member } from '@/app/data';
+import React, { useState } from 'react';
+import { arisanData, type Group, type Member } from '@/app/data';
 import { Header } from '@/components/layout/header';
 import {
   Card,
@@ -10,26 +10,9 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
-import { format } from 'date-fns';
-import { id } from 'date-fns/locale';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { PlusCircle, Trash, Edit } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -38,82 +21,165 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
-const MemberDialog = ({
-  member,
+const GroupManagementCard = ({
+  group,
+  members,
+}: {
+  group: Group;
+  members: Member[];
+}) => {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{group.name}</CardTitle>
+        <CardDescription>
+          Total {group.memberIds.length} anggota terdaftar dalam grup ini.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {members.map(member => (
+          <div
+            key={member.id}
+            className="flex items-center justify-between rounded-md border p-3"
+          >
+            <div className="flex items-center gap-4">
+              <Avatar>
+                <AvatarImage
+                  src={member.avatarUrl}
+                  data-ai-hint={member.avatarHint}
+                />
+                <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <span className="font-medium">{member.name}</span>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="icon">
+                <Edit className="h-4 w-4" />
+                <span className="sr-only">Ubah</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-destructive hover:text-destructive"
+              >
+                <Trash className="h-4 w-4" />
+                <span className="sr-only">Hapus</span>
+              </Button>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+};
+
+const AddMemberToGroupDialog = ({
   isOpen,
   onClose,
-  onSave,
+  groups,
+  allMembers,
 }: {
-  member: Partial<Member> | null;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (member: Member) => void;
+  groups: Group[];
+  allMembers: Member[];
 }) => {
-  const [formData, setFormData] = useState<Partial<Member> | null>(member);
+  const [selectedMemberId, setSelectedMemberId] = useState('');
+  const [selectedGroupId, setSelectedGroupId] = useState('');
   const { toast } = useToast();
 
-  React.useEffect(() => {
-    setFormData(member);
-  }, [member]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { id, value } = e.target;
-    setFormData(prev => ({ ...prev, [id]: value }));
-  };
-
   const handleSave = () => {
-    if (!formData?.name || !formData?.joinedDate) {
-        toast({
-            title: "Data Tidak Lengkap",
-            description: "Nama dan tanggal bergabung harus diisi.",
-            variant: "destructive",
-        });
+    if (!selectedMemberId || !selectedGroupId) {
+      toast({
+        title: 'Data Tidak Lengkap',
+        description: 'Anda harus memilih anggota dan grup.',
+        variant: 'destructive',
+      });
       return;
     }
-    
-    const newMember: Member = {
-      id: formData.id || `m${arisanData.members.length + 1}`,
-      name: formData.name,
-      joinedDate: formData.joinedDate,
-      avatarUrl: formData.avatarUrl || `https://picsum.photos/seed/${formData.name}/100/100`,
-      avatarHint: formData.avatarHint || 'person portrait',
-      paymentHistory: formData.paymentHistory || [],
-      communicationPreferences: formData.communicationPreferences || { channel: 'WhatsApp', preferredTime: 'any' },
-    };
-    onSave(newMember);
+
+    // This is a mock update. In a real app, you'd update your data source.
+    const group = arisanData.groups.find(g => g.id === selectedGroupId);
+    const member = arisanData.members.find(m => m.id === selectedMemberId);
+
+    if (group && member) {
+      if (group.memberIds.includes(member.id)) {
+        toast({
+          title: 'Gagal Menambahkan',
+          description: `${member.name} sudah menjadi anggota di ${group.name}.`,
+          variant: 'destructive',
+        });
+      } else {
+        group.memberIds.push(member.id);
+        toast({
+          title: 'Anggota Ditambahkan',
+          description: `${member.name} telah berhasil ditambahkan ke ${group.name}.`,
+        });
+        onClose();
+      }
+    }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{member?.id ? 'Ubah Anggota' : 'Tambah Anggota Baru'}</DialogTitle>
+          <DialogTitle>Tambah Anggota ke Grup</DialogTitle>
           <DialogDescription>
-            {member?.id
-              ? 'Ubah detail anggota di bawah ini.'
-              : 'Isi detail untuk anggota baru.'}
+            Pilih anggota dan grup tujuan untuk menambahkannya.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="name" className="text-right">
-              Nama
+            <Label htmlFor="member" className="text-right">
+              Anggota
             </Label>
-            <Input id="name" value={formData?.name || ''} onChange={handleChange} className="col-span-3" />
+            <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
+              <SelectTrigger id="member" className="col-span-3">
+                <SelectValue placeholder="Pilih Anggota" />
+              </SelectTrigger>
+              <SelectContent>
+                {allMembers.map(member => (
+                  <SelectItem key={member.id} value={member.id}>
+                    {member.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="joinedDate" className="text-right">
-              Tgl. Bergabung
+            <Label htmlFor="group" className="text-right">
+              Grup
             </Label>
-            <Input id="joinedDate" type="date" value={formData?.joinedDate || ''} onChange={handleChange} className="col-span-3" />
+            <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
+              <SelectTrigger id="group" className="col-span-3">
+                <SelectValue placeholder="Pilih Grup Tujuan" />
+              </SelectTrigger>
+              <SelectContent>
+                {groups.map(group => (
+                  <SelectItem key={group.id} value={group.id}>
+                    {group.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Batal</Button>
+          <Button variant="outline" onClick={onClose}>
+            Batal
+          </Button>
           <Button onClick={handleSave}>Simpan</Button>
         </DialogFooter>
       </DialogContent>
@@ -121,123 +187,61 @@ const MemberDialog = ({
   );
 };
 
-
-export default function GrupPage() {
-  const { toast } = useToast();
-  const [members, setMembers] = useState<Member[]>(arisanData.members);
+export default function ManageGroupsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedMember, setSelectedMember] = useState<Partial<Member> | null>(null);
-
-  const handleAdd = () => {
-    setSelectedMember({});
-    setIsDialogOpen(true);
-  };
-
-  const handleEdit = (member: Member) => {
-    setSelectedMember(member);
-    setIsDialogOpen(true);
-  };
+  // Force re-render when data changes
+  const [, setVersion] = useState(0); 
   
-  const handleDelete = (memberId: string) => {
-    // Note: This is a mock delete. In a real app, you'd update your data source.
-    setMembers(prev => prev.filter(m => m.id !== memberId));
-    toast({
-        title: "Anggota Dihapus",
-        description: "Anggota telah berhasil dihapus dari daftar.",
-    });
-  };
+  const group1 = arisanData.groups.find(g => g.id === 'g3'); // Utama
+  const group2 = arisanData.groups.find(g => g.id === 'g1'); // 20.000
+  const group3 = arisanData.groups.find(g => g.id === 'g2'); // 10.000
 
-  const handleSave = (member: Member) => {
-    const isNew = !member.id.startsWith('m') || !members.some(m => m.id === member.id);
-    if (isNew) {
-        // This is a mock add.
-        const newMember = { ...member, id: `m${Math.random()}`}; // ensure unique id for demo
-        setMembers(prev => [...prev, newMember]);
-        toast({ title: "Anggota Ditambahkan", description: `${member.name} telah ditambahkan.` });
-    } else {
-        // This is a mock update.
-        setMembers(prev => prev.map(m => m.id === member.id ? member : m));
-        toast({ title: "Anggota Diperbarui", description: `Data untuk ${member.name} telah diperbarui.` });
-    }
-    setIsDialogOpen(false);
-  };
+  const membersGroup1 = arisanData.members.filter(member =>
+    group1?.memberIds.includes(member.id)
+  );
+  const membersGroup2 = arisanData.members.filter(member =>
+    group2?.memberIds.includes(member.id)
+  );
+  const membersGroup3 = arisanData.members.filter(member =>
+    group3?.memberIds.includes(member.id)
+  );
 
   return (
     <>
       <div className="flex flex-col min-h-screen">
-        <Header title="Anggota Grup" />
+        <Header title="Kelola Grup" />
         <main className="flex-1 p-4 md:p-6 space-y-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                    <CardTitle>Daftar Anggota Arisan</CardTitle>
-                    <CardDescription>
-                        Kelola semua anggota yang terdaftar dalam arisan.
-                    </CardDescription>
-                </div>
-                <Button onClick={handleAdd}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Tambah Anggota
-                </Button>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Anggota</TableHead>
-                    <TableHead>Tanggal Bergabung</TableHead>
-                    <TableHead className="text-right">Tindakan</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {members.map((member) => (
-                    <TableRow key={member.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-9 w-9">
-                            <AvatarImage src={member.avatarUrl} data-ai-hint={member.avatarHint} />
-                            <AvatarFallback>
-                              {member.name.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="font-medium">{member.name}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {format(new Date(member.joinedDate), 'd MMMM yyyy', { locale: id })}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Tindakan</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Tindakan</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => handleEdit(member)}>Ubah</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => handleDelete(member.id)}>Hapus</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <div className="flex items-center justify-between">
+            <h1 className="font-headline text-2xl font-bold tracking-tight text-foreground/90 sm:text-3xl">
+              Kelola Grup Arisan
+            </h1>
+            <div className='flex gap-2'>
+              <Button asChild variant="outline">
+                <Link href="/grup/anggota">Kelola Semua Anggota</Link>
+              </Button>
+              <Button onClick={() => setIsDialogOpen(true)}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Tambah Anggota ke Grup
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            {group1 && <GroupManagementCard group={group1} members={membersGroup1} />}
+            {group2 && <GroupManagementCard group={group2} members={membersGroup2} />}
+            {group3 && <GroupManagementCard group={group3} members={membersGroup3} />}
+          </div>
         </main>
       </div>
-      
-      {isDialogOpen && (
-        <MemberDialog
-          member={selectedMember}
-          isOpen={isDialogOpen}
-          onClose={() => setIsDialogOpen(false)}
-          onSave={handleSave}
-        />
-      )}
+      <AddMemberToGroupDialog
+        isOpen={isDialogOpen}
+        onClose={() => {
+          setIsDialogOpen(false);
+          setVersion(v => v + 1); // Trigger re-render
+        }}
+        groups={arisanData.groups}
+        allMembers={arisanData.members}
+      />
     </>
   );
 }
