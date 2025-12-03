@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ArrowDownCircle, ArrowUpCircle, Banknote, UserCheck } from 'lucide-react';
-import { format, getMonth, getYear, subMonths } from 'date-fns';
+import { format, getMonth, getYear, subMonths, startOfMonth } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
@@ -19,6 +19,7 @@ const formatCurrency = (amount: number) =>
 
 const generateMonthOptions = () => {
     const options = [];
+    // Go back 12 months from the current month
     let currentDate = new Date();
     for (let i = 0; i < 12; i++) {
         const monthValue = `${getYear(currentDate)}-${getMonth(currentDate)}`;
@@ -31,52 +32,71 @@ const generateMonthOptions = () => {
 
 export function MonthlyReport() {
     const monthOptions = useMemo(() => generateMonthOptions(), []);
+    // Set default to be the latest month available in options
     const [selectedMonth, setSelectedMonth] = useState(monthOptions[0].value);
 
     const reportData = useMemo(() => {
         const [year, month] = selectedMonth.split('-').map(Number);
         
-        const group = arisanData.groups.find(g => g.id === 'g1'); // Assuming one main group
-        if (!group) return { cashIn: 0, cashOut: 0, endingBalance: 0, previousWinner: null, transactions: [] };
+        const group = arisanData.groups.find(g => g.id === 'g1');
+        if (!group) return { cashIn: 0, cashOut: 0, endingBalance: 0, winner: null, transactions: [] };
 
-        const contributionAmount = group.contributionAmount;
+        const targetMonthStart = startOfMonth(new Date(year, month));
 
-        const cashIn = arisanData.payments.filter(p => {
-            const paymentDate = new Date(p.dueDate);
-            return p.groupId === group.id && p.status === 'Paid' && getYear(paymentDate) === year && getMonth(paymentDate) === month;
-        }).reduce((sum, p) => sum + p.amount, 0);
+        const transactions = arisanData.payments
+            .filter(p => {
+                const paymentDueDate = new Date(p.dueDate);
+                return p.groupId === group.id && 
+                       getYear(paymentDueDate) === year && 
+                       getMonth(paymentDueDate) === month;
+            });
         
+        const paidTransactions = transactions.filter(t => t.status === 'Paid');
+
+        const cashIn = paidTransactions.reduce((sum, p) => sum + p.amount, 0);
+        
+        // This is a simplification. In a real app, you would have a history of winners per month.
+        // We will simulate by picking one of the members as the winner for that month.
+        // For demonstration, let's find a "winner" for the selected month.
+        // Here we'll just use the currentWinnerId for the most recent month, and cycle for past months.
+        const currentMonthValue = `${getYear(new Date())}-${getMonth(new Date())}`;
+        let winner = null;
         let cashOut = 0;
-        let previousWinner = null;
         
-        // This is a simplification. A real app would have a record of who won each month.
-        // We'll use the "currentWinnerId" as the winner for the report's purpose.
-        const prevWinnerId = group.currentWinnerId;
-        const potentialPreviousWinner = arisanData.members.find(m => m.id === prevWinnerId);
+        if (selectedMonth === currentMonthValue && group.currentWinnerId) {
+             winner = arisanData.members.find(m => m.id === group.currentWinnerId);
+        } else {
+             // For past months, let's just pick a member based on the month to simulate a winner history.
+             // This is not a real-world scenario but good for demo.
+             const memberIndex = month % group.memberIds.length;
+             const winnerId = group.memberIds[memberIndex];
+             winner = arisanData.members.find(m => m.id === winnerId);
+        }
 
-        if (potentialPreviousWinner) {
-            previousWinner = potentialPreviousWinner;
-            // Cash out is the total pot for the group
+        if (winner) {
             cashOut = group.contributionAmount * group.memberIds.length;
         }
 
         const endingBalance = cashIn - cashOut;
 
-        const transactions = arisanData.payments
-            .filter(p => {
-                const paymentDate = new Date(p.dueDate);
-                return p.groupId === group.id && getYear(paymentDate) === year && getMonth(paymentDate) === month && p.status === 'Paid';
-            })
+        const detailedTransactions = paidTransactions
             .map(p => {
                 const member = arisanData.members.find(m => m.id === p.memberId);
+                // We'll find a paid payment entry to get a date, falling back to due date.
+                const paymentHistoryEntry = member?.paymentHistory.find(ph => {
+                    const phDate = new Date(ph.date);
+                    return getYear(phDate) === year && getMonth(phDate) === month;
+                })
                 return {
-                    member: member?.name || 'Unknown',
+                    member: member?.name || 'Tidak diketahui',
+                    avatarUrl: member?.avatarUrl,
+                    avatarHint: member?.avatarHint,
                     amount: p.amount,
-                    date: p.dueDate,
+                    date: paymentHistoryEntry ? paymentHistoryEntry.date : p.dueDate,
                 };
             });
 
-        return { cashIn, cashOut, endingBalance, previousWinner, transactions };
+        return { cashIn, cashOut, endingBalance, winner, transactions: detailedTransactions };
     }, [selectedMonth]);
 
 
@@ -84,14 +104,14 @@ export function MonthlyReport() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
             <div>
-                <CardTitle>Ringkasan Laporan</CardTitle>
-                <CardDescription>Menampilkan data keuangan untuk bulan yang dipilih.</CardDescription>
+                <CardTitle>Laporan Bulanan</CardTitle>
+                <CardDescription>Pilih bulan dan tahun untuk melihat riwayat laporan keuangan.</CardDescription>
             </div>
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Pilih Bulan" />
+              <SelectTrigger className="w-full sm:w-[240px]">
+                <SelectValue placeholder="Pilih Bulan & Tahun" />
               </SelectTrigger>
               <SelectContent>
                 {monthOptions.map(option => (
@@ -137,22 +157,22 @@ export function MonthlyReport() {
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Pemenang Bulan Ini</CardTitle>
+                        <CardTitle className="text-sm font-medium">Pemenang Bulan Terpilih</CardTitle>
                         <UserCheck className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        {reportData.previousWinner ? (
+                        {reportData.winner ? (
                             <div className="flex items-center gap-3">
                                 <Avatar className="h-9 w-9">
-                                    <AvatarImage src={reportData.previousWinner.avatarUrl} data-ai-hint={reportData.previousWinner.avatarHint} />
-                                    <AvatarFallback>{reportData.previousWinner.name.charAt(0)}</AvatarFallback>
+                                    <AvatarImage src={reportData.winner.avatarUrl} data-ai-hint={reportData.winner.avatarHint} />
+                                    <AvatarFallback>{reportData.winner.name.charAt(0)}</AvatarFallback>
                                 </Avatar>
-                                <p className="font-semibold text-sm">{reportData.previousWinner.name}</p>
+                                <p className="font-semibold text-sm">{reportData.winner.name}</p>
                             </div>
                         ) : (
                             <p className="text-sm text-muted-foreground">Tidak ada data</p>
                         )}
-                         <p className="text-xs text-muted-foreground mt-2">Pemenang arisan siklus ini</p>
+                         <p className="text-xs text-muted-foreground mt-2">Pemenang arisan siklus terpilih</p>
                     </CardContent>
                 </Card>
             </div>
@@ -161,8 +181,8 @@ export function MonthlyReport() {
 
       <Card>
         <CardHeader>
-            <CardTitle>Detail Transaksi Masuk</CardTitle>
-            <CardDescription>Daftar semua iuran yang telah dibayarkan pada bulan ini.</CardDescription>
+            <CardTitle>Detail Pemasukan Bulan {format(new Date(selectedMonth.split('-')[0], selectedMonth.split('-')[1]), 'MMMM yyyy', { locale: id })}</CardTitle>
+            <CardDescription>Daftar semua iuran yang telah dibayarkan pada bulan yang dipilih.</CardDescription>
         </CardHeader>
         <CardContent>
             <Table>
@@ -177,14 +197,22 @@ export function MonthlyReport() {
                     {reportData.transactions.length > 0 ? (
                         reportData.transactions.map((tx, index) => (
                             <TableRow key={index}>
-                                <TableCell>{tx.member}</TableCell>
+                                <TableCell>
+                                    <div className="flex items-center gap-3">
+                                        <Avatar className="h-9 w-9 hidden sm:flex">
+                                            <AvatarImage src={tx.avatarUrl} data-ai-hint={tx.avatarHint} />
+                                            <AvatarFallback>{tx.member.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                        <div className="font-medium">{tx.member}</div>
+                                    </div>
+                                </TableCell>
                                 <TableCell>{format(new Date(tx.date), 'd MMMM yyyy', { locale: id })}</TableCell>
                                 <TableCell className="text-right">{formatCurrency(tx.amount)}</TableCell>
                             </TableRow>
                         ))
                     ) : (
                         <TableRow>
-                            <TableCell colSpan={3} className="text-center text-muted-foreground">
+                            <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
                                 Tidak ada data transaksi untuk bulan ini.
                             </TableCell>
                         </TableRow>
