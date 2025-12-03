@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { arisanData, type DetailedPayment, type Member } from '@/app/data';
+import { arisanData, type DetailedPayment, type Member, type Group } from '@/app/data';
 import { Header } from '@/components/layout/header';
 import {
   Card,
@@ -23,6 +23,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 type PaymentDetail = DetailedPayment & { member?: Member };
 type ContributionType = keyof DetailedPayment['contributions'];
@@ -35,22 +36,136 @@ const contributionLabels: Record<ContributionType, string> = {
   other: 'Iuran Lainnya',
 };
 
+const formatCurrency = (amount: number) =>
+  new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+  }).format(amount);
+
+// --- Detailed Table for Main Group ---
+const DetailedPaymentTable = ({ payments, onPaymentChange }: { payments: PaymentDetail[], onPaymentChange: (paymentId: string, contributionType: ContributionType, isPaid: boolean) => void }) => {
+  return (
+    <div className='overflow-x-auto'>
+      <Table className="min-w-[1000px]">
+        <TableHeader>
+          <TableRow>
+            <TableHead className='sticky left-0 bg-card z-10 w-[200px]'>Nama</TableHead>
+            <TableHead>Bulan</TableHead>
+            {(Object.keys(contributionLabels) as ContributionType[]).map(key => (
+              contributionLabels[key] && <TableHead key={key}>{contributionLabels[key]}</TableHead>
+            ))}
+            <TableHead className="text-right">Jumlah</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {payments.map(payment => (
+            <TableRow key={payment.id} data-state={payment.status === 'Paid' ? 'selected' : ''}>
+              <TableCell className="font-medium sticky left-0 bg-card z-10 w-[200px]">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-9 w-9 hidden sm:flex">
+                    <AvatarImage src={payment.member?.avatarUrl} data-ai-hint={payment.member?.avatarHint} />
+                    <AvatarFallback>
+                      {payment.member?.name.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>{payment.member?.name}</div>
+                </div>
+              </TableCell>
+              <TableCell>
+                {new Date(payment.dueDate).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+              </TableCell>
+              {(Object.keys(payment.contributions) as ContributionType[]).map(type => (
+                payment.contributions[type].amount > 0 && (
+                  <TableCell key={type}>
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id={`paid-${payment.id}-${type}`}
+                        checked={payment.contributions[type].paid}
+                        onCheckedChange={checked => onPaymentChange(payment.id, type, !!checked)}
+                        aria-label={`Tandai ${contributionLabels[type]} untuk ${payment.member?.name} lunas`}
+                      />
+                      <label htmlFor={`paid-${payment.id}-${type}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                        {formatCurrency(payment.contributions[type].amount)}
+                      </label>
+                    </div>
+                  </TableCell>
+                )
+              ))}
+              <TableCell className="text-right">
+                {formatCurrency(payment.totalAmount)}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+// --- Simple Table for Other Groups ---
+const SimplePaymentTable = ({ payments, onStatusChange }: { payments: PaymentDetail[], onStatusChange: (paymentId: string, newStatus: DetailedPayment['status']) => void }) => {
+    return (
+        <Table>
+            <TableHeader>
+                <TableRow>
+                    <TableHead>Nama</TableHead>
+                    <TableHead>Bulan</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Jumlah</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {payments.map(payment => (
+                    <TableRow key={payment.id} data-state={payment.status === 'Paid' ? 'selected' : ''}>
+                        <TableCell>
+                           <div className="flex items-center gap-3">
+                            <Avatar className="h-9 w-9 hidden sm:flex">
+                              <AvatarImage src={payment.member?.avatarUrl} data-ai-hint={payment.member?.avatarHint} />
+                              <AvatarFallback>
+                                {payment.member?.name.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="font-medium">{payment.member?.name}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{new Date(payment.dueDate).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}</TableCell>
+                        <TableCell>
+                          <Select value={payment.status} onValueChange={(value) => onStatusChange(payment.id, value as DetailedPayment['status'])}>
+                            <SelectTrigger className="w-[120px]">
+                                <SelectValue/>
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Paid"><Badge variant="secondary" className="bg-green-500/20 text-green-400 border-green-500/20 w-full justify-center">Lunas</Badge></SelectItem>
+                                <SelectItem value="Unpaid"><Badge variant="destructive">Belum Lunas</Badge></SelectItem>
+                                <SelectItem value="Late"><Badge variant="destructive" className="bg-yellow-500/20 text-yellow-400 border-yellow-500/20 w-full justify-center">Terlambat</Badge></SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell className="text-right">{formatCurrency(payment.totalAmount)}</TableCell>
+                    </TableRow>
+                ))}
+            </TableBody>
+        </Table>
+    )
+}
+
 export default function PaymentPage() {
   const { toast } = useToast();
   const [payments, setPayments] = useState<DetailedPayment[]>(arisanData.payments);
   const [selectedGroup, setSelectedGroup] = useState('g3'); // Default to 'Grup Arisan Utama'
 
-  const calculatePaymentStatus = useCallback((payment: DetailedPayment): { status: DetailedPayment['status'], totalAmount: number, allPaid: boolean } => {
+  const calculatePaymentStatus = useCallback((payment: DetailedPayment): { status: DetailedPayment['status'], totalAmount: number } => {
     const { contributions, dueDate } = payment;
     let allPaid = true;
     let totalAmount = 0;
 
     for (const key in contributions) {
-        const type = key as ContributionType;
-        totalAmount += contributions[type].amount;
-        if (!contributions[type].paid) {
-            allPaid = false;
-        }
+      const type = key as ContributionType;
+      totalAmount += contributions[type].amount;
+      if (!contributions[type].paid) {
+        allPaid = false;
+      }
     }
 
     let status: DetailedPayment['status'] = 'Unpaid';
@@ -64,10 +179,10 @@ export default function PaymentPage() {
       }
     }
     
-    return { status, totalAmount, allPaid };
+    return { status, totalAmount };
   }, []);
 
-  const handlePaymentChange = (paymentId: string, contributionType: ContributionType, isPaid: boolean) => {
+  const handleDetailedPaymentChange = (paymentId: string, contributionType: ContributionType, isPaid: boolean) => {
     setPayments(prevPayments =>
       prevPayments.map(p => {
         if (p.id === paymentId) {
@@ -80,13 +195,15 @@ export default function PaymentPage() {
           
           const { status, totalAmount } = calculatePaymentStatus(newP);
           newP.status = status;
-          newP.totalAmount = totalAmount;
+          newP.totalAmount = totalAmount; // This is a recalculation, should be fine.
 
           const memberName = arisanData.members.find(m => m.id === p.memberId)?.name || 'Anggota';
-          toast({
-            title: 'Status Iuran Diperbarui',
-            description: `${contributionLabels[contributionType]} untuk ${memberName} ${isPaid ? 'sudah' : 'belum'} dibayar.`,
-          });
+          if (contributionLabels[contributionType]) {
+            toast({
+              title: 'Status Iuran Diperbarui',
+              description: `${contributionLabels[contributionType]} untuk ${memberName} ${isPaid ? 'sudah' : 'belum'} dibayar.`,
+            });
+          }
           
           return newP;
         }
@@ -94,6 +211,31 @@ export default function PaymentPage() {
       })
     );
   };
+
+  const handleSimpleStatusChange = (paymentId: string, newStatus: DetailedPayment['status']) => {
+    setPayments(prevPayments => prevPayments.map(p => {
+        if (p.id === paymentId) {
+            const allPaid = newStatus === 'Paid';
+            const updatedContributions = { ...p.contributions };
+            
+            for (const key in updatedContributions) {
+                const type = key as ContributionType;
+                if(updatedContributions[type].amount > 0) {
+                    updatedContributions[type].paid = allPaid;
+                }
+            }
+
+            const memberName = arisanData.members.find(m => m.id === p.memberId)?.name || 'Anggota';
+            toast({
+              title: 'Status Pembayaran Diperbarui',
+              description: `Status untuk ${memberName} diubah menjadi ${newStatus}.`,
+            });
+
+            return { ...p, status: newStatus, contributions: updatedContributions };
+        }
+        return p;
+    }));
+  }
   
   const filteredPayments = useMemo(() => {
     return payments
@@ -109,19 +251,11 @@ export default function PaymentPage() {
     // In a real app, this would send the updated 'payments' state to your backend API.
     // For now, we update the global mock data.
     arisanData.payments = payments;
-    console.log("Saving changes:", payments);
     toast({
         title: "Perubahan Disimpan",
         description: "Semua status pembayaran telah disimpan."
     })
   }
-  
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-    }).format(amount);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -152,79 +286,17 @@ export default function PaymentPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className='overflow-x-auto'>
-              <Table className="min-w-[1000px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className='sticky left-0 bg-background z-10 w-[200px]'>Nama</TableHead>
-                    <TableHead>Bulan</TableHead>
-                    {(Object.keys(contributionLabels) as ContributionType[]).map(key => (
-                      contributionLabels[key] && <TableHead key={key}>{contributionLabels[key]}</TableHead>
-                    ))}
-                    <TableHead className="text-right">Jumlah</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredPayments.length > 0 ? (
-                    filteredPayments.map(payment => (
-                      <TableRow key={payment.id} data-state={payment.status === 'Paid' ? 'selected' : ''}>
-                        <TableCell className="font-medium sticky left-0 bg-background z-10 w-[200px]">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-9 w-9 hidden sm:flex">
-                              <AvatarImage src={payment.member?.avatarUrl} data-ai-hint={payment.member?.avatarHint} />
-                              <AvatarFallback>
-                                {payment.member?.name.charAt(0)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>{payment.member?.name}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {new Date(payment.dueDate).toLocaleDateString('id-ID', {
-                            month: 'long',
-                            year: 'numeric',
-                          })}
-                        </TableCell>
-                         {(Object.keys(payment.contributions) as ContributionType[]).map(type => (
-                          payment.contributions[type].amount > 0 && (
-                            <TableCell key={type}>
-                               <div className="flex items-center gap-2">
-                                <Checkbox
-                                  id={`paid-${payment.id}-${type}`}
-                                  checked={payment.contributions[type].paid}
-                                  onCheckedChange={checked =>
-                                    handlePaymentChange(payment.id, type, !!checked)
-                                  }
-                                  aria-label={`Tandai ${contributionLabels[type]} untuk ${payment.member?.name} lunas`}
-                                />
-                                <label
-                                  htmlFor={`paid-${payment.id}-${type}`}
-                                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                >
-                                    {formatCurrency(payment.contributions[type].amount)}
-                                </label>
-                               </div>
-                            </TableCell>
-                          )
-                        ))}
-                        <TableCell className="text-right">
-                          {formatCurrency(payment.totalAmount)}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell
-                        colSpan={8}
-                        className="text-center text-muted-foreground py-8"
-                      >
-                        Tidak ada data pembayaran untuk grup ini.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+            {filteredPayments.length > 0 ? (
+                selectedGroup === 'g3' ? (
+                    <DetailedPaymentTable payments={filteredPayments} onPaymentChange={handleDetailedPaymentChange} />
+                ) : (
+                    <SimplePaymentTable payments={filteredPayments} onStatusChange={handleSimpleStatusChange} />
+                )
+            ) : (
+                <div className="text-center text-muted-foreground py-8">
+                    Tidak ada data pembayaran untuk grup ini.
+                </div>
+            )}
           </CardContent>
         </Card>
       </main>
