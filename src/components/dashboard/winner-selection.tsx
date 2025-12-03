@@ -30,15 +30,21 @@ export function WinnerSelection() {
   const [currentWinner, setCurrentWinner] = useState<Member | undefined>(undefined);
   const [drawnWinner, setDrawnWinner] = useState<Member | undefined>(undefined);
 
+  const mainGroup = arisanData.groups.find(g => g.id === 'g1');
+
   useEffect(() => {
-    const winner = arisanData.members.find(
-      (m) => m.id === arisanData.groups[0].currentWinnerId
-    );
-    setCurrentWinner(winner);
-  }, []);
+    if (mainGroup?.currentWinnerId) {
+      const winner = arisanData.members.find(
+        (m) => m.id === mainGroup.currentWinnerId
+      );
+      setCurrentWinner(winner);
+    }
+  }, [mainGroup]);
 
   const handleDrawWinner = () => {
-    const eligibleMembers = arisanData.members.filter(m => m.id !== currentWinner?.id);
+    if (!mainGroup) return;
+
+    const eligibleMembers = arisanData.members.filter(m => mainGroup.memberIds.includes(m.id) && m.id !== currentWinner?.id);
     if (eligibleMembers.length === 0) {
         toast({
             title: "Undian Gagal",
@@ -90,7 +96,7 @@ export function WinnerSelection() {
             )}
         </CardContent>
         <CardFooter>
-          <Button className="w-full" onClick={handleDrawWinner} disabled={isDrawing}>
+          <Button className="w-full" onClick={handleDrawWinner} disabled={isDrawing || !mainGroup}>
             {isDrawing ? "Mengundi..." : "Undi Pemenang Berikutnya"}
           </Button>
         </CardFooter>

@@ -38,14 +38,16 @@ import {
     DropdownMenuTrigger,
   } from "@/components/ui/dropdown-menu"
 
-const memberDetails = arisanData.payments.map((payment) => {
-  const member = arisanData.members.find((m) => m.id === payment.memberId);
-  const statusMapping = {
-    'Paid': 'Lunas',
-    'Unpaid': 'Belum Lunas',
-    'Late': 'Terlambat',
-  }
-  return { ...payment, member, status: statusMapping[payment.status] as 'Lunas' | 'Belum Lunas' | 'Terlambat' };
+const memberDetails = arisanData.payments
+  .filter(p => p.groupId === 'g1')
+  .map((payment) => {
+    const member = arisanData.members.find((m) => m.id === payment.memberId);
+    const statusMapping = {
+      'Paid': 'Lunas',
+      'Unpaid': 'Belum Lunas',
+      'Late': 'Terlambat',
+    }
+    return { ...payment, member, status: statusMapping[payment.status] as 'Lunas' | 'Belum Lunas' | 'Terlambat' };
 });
 
 export function PaymentOverview() {
@@ -60,7 +62,7 @@ export function PaymentOverview() {
       <CardHeader>
         <CardTitle>Tinjauan Pembayaran</CardTitle>
         <CardDescription>
-          Lacak pembayaran untuk siklus "Arisan Utama 2024" saat ini.
+          Lacak pembayaran untuk siklus "Arisan Uang Kaget Rp. 20.000" saat ini.
         </CardDescription>
       </CardHeader>
       <CardContent>

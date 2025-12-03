@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { arisanData } from '@/app/data';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -41,9 +42,11 @@ export function GroupsList() {
         ))}
       </CardContent>
       <CardFooter>
-        <Button className="w-full">
-          <Users className="mr-2 h-4 w-4" />
-          Kelola Grup
+        <Button className="w-full" asChild>
+          <Link href="/grup/kelola">
+            <Users className="mr-2 h-4 w-4" />
+            Kelola Grup
+          </Link>
         </Button>
       </CardFooter>
     </Card>

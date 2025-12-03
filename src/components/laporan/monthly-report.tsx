@@ -35,34 +35,28 @@ export function MonthlyReport() {
 
     const reportData = useMemo(() => {
         const [year, month] = selectedMonth.split('-').map(Number);
-        const previousMonthDate = subMonths(new Date(year, month), 1);
-        const prevYear = getYear(previousMonthDate);
-        const prevMonth = getMonth(previousMonthDate);
+        
+        const group = arisanData.groups.find(g => g.id === 'g1'); // Assuming one main group
+        if (!group) return { cashIn: 0, cashOut: 0, endingBalance: 0, previousWinner: null, transactions: [] };
 
-        const group = arisanData.groups[0]; // Assuming one main group
         const contributionAmount = group.contributionAmount;
 
         const cashIn = arisanData.payments.filter(p => {
             const paymentDate = new Date(p.dueDate);
-            return p.status === 'Paid' && getYear(paymentDate) === year && getMonth(paymentDate) === month;
+            return p.groupId === group.id && p.status === 'Paid' && getYear(paymentDate) === year && getMonth(paymentDate) === month;
         }).reduce((sum, p) => sum + p.amount, 0);
-        
-        // Find winner from the PREVIOUS month
-        const previousWinnerPayment = arisanData.payments.find(p => {
-            const paymentDate = new Date(p.dueDate);
-            return getYear(paymentDate) === prevYear && getMonth(paymentDate) === prevMonth;
-        });
         
         let cashOut = 0;
         let previousWinner = null;
         
         // This is a simplification. A real app would have a record of who won each month.
-        // We'll pick a "winner" from the previous month's members for demonstration.
-        const prevWinnerId = arisanData.groups[0].currentWinnerId; // use current winner as stand-in
+        // We'll use the "currentWinnerId" as the winner for the report's purpose.
+        const prevWinnerId = group.currentWinnerId;
         const potentialPreviousWinner = arisanData.members.find(m => m.id === prevWinnerId);
 
         if (potentialPreviousWinner) {
             previousWinner = potentialPreviousWinner;
+            // Cash out is the total pot for the group
             cashOut = group.contributionAmount * group.memberIds.length;
         }
 
@@ -71,7 +65,7 @@ export function MonthlyReport() {
         const transactions = arisanData.payments
             .filter(p => {
                 const paymentDate = new Date(p.dueDate);
-                return getYear(paymentDate) === year && getMonth(paymentDate) === month && p.status === 'Paid';
+                return p.groupId === group.id && getYear(paymentDate) === year && getMonth(paymentDate) === month && p.status === 'Paid';
             })
             .map(p => {
                 const member = arisanData.members.find(m => m.id === p.memberId);
@@ -143,7 +137,7 @@ export function MonthlyReport() {
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Pemenang Bulan Lalu</CardTitle>
+                        <CardTitle className="text-sm font-medium">Pemenang Bulan Ini</CardTitle>
                         <UserCheck className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
@@ -158,7 +152,7 @@ export function MonthlyReport() {
                         ) : (
                             <p className="text-sm text-muted-foreground">Tidak ada data</p>
                         )}
-                         <p className="text-xs text-muted-foreground mt-2">Pemenang arisan siklus sebelumnya</p>
+                         <p className="text-xs text-muted-foreground mt-2">Pemenang arisan siklus ini</p>
                     </CardContent>
                 </Card>
             </div>

@@ -8,14 +8,14 @@ import { useMemo } from 'react';
 export function FinancialSummary() {
   const { totalContributions, currentPayout, outstandingPaymentsCount } =
     useMemo(() => {
-      const paidPayments = arisanData.payments.filter((p) => p.status === 'Paid');
+      const paidPayments = arisanData.payments.filter((p) => p.status === 'Paid' && p.groupId === 'g1');
       const totalContributions = paidPayments.reduce((sum, p) => sum + p.amount, 0);
       
-      const mainGroup = arisanData.groups[0];
+      const mainGroup = arisanData.groups.find(g => g.id === 'g1');
       const currentPayout = mainGroup ? mainGroup.contributionAmount * mainGroup.memberIds.length : 0;
       
       const outstandingPaymentsCount = arisanData.payments.filter(
-        (p) => p.status === 'Unpaid' || p.status === 'Late'
+        (p) => p.groupId === 'g1' && (p.status === 'Unpaid' || p.status === 'Late')
       ).length;
 
       return { totalContributions, currentPayout, outstandingPaymentsCount };
@@ -38,7 +38,7 @@ export function FinancialSummary() {
               minimumFractionDigits: 0,
             }).format(totalContributions)}
           </div>
-          <p className="text-xs text-muted-foreground">+2 pembayaran dari siklus lalu</p>
+          <p className="text-xs text-muted-foreground">Hanya dari grup utama</p>
         </CardContent>
       </Card>
       <Card className="hover:border-primary/50 transition-colors">
@@ -54,7 +54,7 @@ export function FinancialSummary() {
               minimumFractionDigits: 0,
             }).format(currentPayout)}
           </div>
-          <p className="text-xs text-muted-foreground">Untuk grup "Arisan Utama 2024"</p>
+          <p className="text-xs text-muted-foreground">Untuk grup "Arisan Uang Kaget Rp. 20.000"</p>
         </CardContent>
       </Card>
       <Card className="hover:border-destructive/50 transition-colors">
@@ -64,7 +64,7 @@ export function FinancialSummary() {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold font-headline">{outstandingPaymentsCount} Anggota</div>
-          <p className="text-xs text-muted-foreground">Untuk siklus saat ini</p>
+          <p className="text-xs text-muted-foreground">Di grup utama</p>
         </CardContent>
       </Card>
     </div>
