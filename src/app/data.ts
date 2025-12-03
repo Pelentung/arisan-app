@@ -1,6 +1,8 @@
 export interface Member {
   id: string;
   name: string;
+  address?: string;
+  phone?: string;
   avatarUrl: string;
   avatarHint: string;
   joinedDate: string;
@@ -51,6 +53,8 @@ export const arisanData: {
     {
       id: 'm1',
       name: 'Budi Santoso',
+      address: 'Jl. Merdeka 1',
+      phone: '081234567890',
       avatarUrl: 'https://picsum.photos/seed/avatar1/100/100',
       avatarHint: 'person portrait',
       joinedDate: '2023-01-15',
@@ -64,6 +68,8 @@ export const arisanData: {
     {
       id: 'm2',
       name: 'Siti Aminah',
+      address: 'Jl. Kemerdekaan 2',
+      phone: '081234567891',
       avatarUrl: 'https://picsum.photos/seed/avatar2/100/100',
       avatarHint: 'person portrait',
       joinedDate: '2023-01-15',
@@ -77,6 +83,8 @@ export const arisanData: {
     {
       id: 'm3',
       name: 'Agus Wijoyo',
+      address: 'Jl. Pahlawan 3',
+      phone: '081234567892',
       avatarUrl: 'https://picsum.photos/seed/avatar3/100/100',
       avatarHint: 'person portrait',
       joinedDate: '2023-02-01',
@@ -90,6 +98,8 @@ export const arisanData: {
     {
       id: 'm4',
       name: 'Dewi Lestari',
+      address: 'Jl. Nusantara 4',
+      phone: '081234567893',
       avatarUrl: 'https://picsum.photos/seed/avatar4/100/100',
       avatarHint: 'person portrait',
       joinedDate: '2023-03-20',
@@ -103,6 +113,8 @@ export const arisanData: {
     {
       id: 'm5',
       name: 'Eko Prasetyo',
+      address: 'Jl. Keadilan 5',
+      phone: '081234567894',
       avatarUrl: 'https://picsum.photos/seed/avatar5/100/100',
       avatarHint: 'person portrait',
       joinedDate: '2023-05-05',

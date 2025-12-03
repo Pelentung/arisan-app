@@ -29,8 +29,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { format } from 'date-fns';
 
 const GroupManagementCard = ({
   group,
@@ -88,22 +90,22 @@ const AddMemberToGroupDialog = ({
   isOpen,
   onClose,
   groups,
-  allMembers,
 }: {
   isOpen: boolean;
   onClose: () => void;
   groups: Group[];
-  allMembers: Member[];
 }) => {
-  const [selectedMemberId, setSelectedMemberId] = useState('');
+  const [name, setName] = useState('');
+  const [address, setAddress] = useState('');
+  const [phone, setPhone] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState('');
   const { toast } = useToast();
 
   const handleSave = () => {
-    if (!selectedMemberId || !selectedGroupId) {
+    if (!name || !address || !phone || !selectedGroupId) {
       toast({
         title: 'Data Tidak Lengkap',
-        description: 'Anda harus memilih anggota dan grup.',
+        description: 'Semua kolom harus diisi.',
         variant: 'destructive',
       });
       return;
@@ -111,52 +113,77 @@ const AddMemberToGroupDialog = ({
 
     // This is a mock update. In a real app, you'd update your data source.
     const group = arisanData.groups.find(g => g.id === selectedGroupId);
-    const member = arisanData.members.find(m => m.id === selectedMemberId);
+    
+    if (group) {
+        const newMemberId = `m${arisanData.members.length + 1}`;
+        const newMember: Member = {
+            id: newMemberId,
+            name,
+            address,
+            phone,
+            joinedDate: format(new Date(), 'yyyy-MM-dd'),
+            avatarUrl: `https://picsum.photos/seed/${name}/100/100`,
+            avatarHint: 'person portrait',
+            paymentHistory: [],
+            communicationPreferences: { channel: 'WhatsApp', preferredTime: 'any' },
+        };
 
-    if (group && member) {
-      if (group.memberIds.includes(member.id)) {
-        toast({
-          title: 'Gagal Menambahkan',
-          description: `${member.name} sudah menjadi anggota di ${group.name}.`,
-          variant: 'destructive',
-        });
-      } else {
-        group.memberIds.push(member.id);
-        toast({
-          title: 'Anggota Ditambahkan',
-          description: `${member.name} telah berhasil ditambahkan ke ${group.name}.`,
-        });
-        onClose();
-      }
+        // Add new member to master list
+        arisanData.members.push(newMember);
+
+        // Add member to selected group
+        if (group.memberIds.includes(newMember.id)) {
+            toast({
+              title: 'Gagal Menambahkan',
+              description: `${newMember.name} sudah menjadi anggota di ${group.name}.`,
+              variant: 'destructive',
+            });
+        } else {
+            group.memberIds.push(newMember.id);
+            toast({
+              title: 'Anggota Ditambahkan',
+              description: `${newMember.name} telah berhasil ditambahkan ke ${group.name}.`,
+            });
+            onClose();
+        }
     }
   };
+  
+  const resetForm = () => {
+    setName('');
+    setAddress('');
+    setPhone('');
+    setSelectedGroupId('');
+  };
+
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) { resetForm(); } onClose(); }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Tambah Anggota ke Grup</DialogTitle>
+          <DialogTitle>Tambah Anggota Baru ke Grup</DialogTitle>
           <DialogDescription>
-            Pilih anggota dan grup tujuan untuk menambahkannya.
+            Isi detail anggota baru dan pilih grup tujuan.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="member" className="text-right">
-              Anggota
+            <Label htmlFor="name" className="text-right">
+              Nama
             </Label>
-            <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
-              <SelectTrigger id="member" className="col-span-3">
-                <SelectValue placeholder="Pilih Anggota" />
-              </SelectTrigger>
-              <SelectContent>
-                {allMembers.map(member => (
-                  <SelectItem key={member.id} value={member.id}>
-                    {member.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" placeholder="Nama lengkap anggota"/>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="address" className="text-right">
+              Alamat
+            </Label>
+            <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} className="col-span-3" placeholder="Alamat tinggal"/>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="phone" className="text-right">
+              Nomor HP
+            </Label>
+            <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} className="col-span-3" placeholder="Nomor telepon aktif"/>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="group" className="text-right">
@@ -240,7 +267,6 @@ export default function ManageGroupsPage() {
           setVersion(v => v + 1); // Trigger re-render
         }}
         groups={arisanData.groups}
-        allMembers={arisanData.members}
       />
     </>
   );
