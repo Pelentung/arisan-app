@@ -200,7 +200,7 @@ export default function PaymentPage() {
           if (contributionLabels[contributionType]) {
             toast({
               title: 'Status Iuran Diperbarui',
-              description: `${contributionLabels[contributionType]} untuk ${memberName} ${isPaid ? 'sudah' : 'belum'} dibayar.`,
+              description: `${contributionLabels[type]} untuk ${memberName} ${isPaid ? 'sudah' : 'belum'} dibayar.`,
             });
           }
           
