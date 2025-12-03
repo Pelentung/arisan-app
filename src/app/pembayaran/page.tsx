@@ -36,7 +36,17 @@ export default function PaymentPage() {
       prevPayments.map(p => {
         if (p.id === paymentId) {
           const newStatus = isPaid ? 'Paid' : 'Unpaid';
-          if (p.status !== newStatus) {
+          
+          const dueDate = new Date(p.dueDate);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          let finalStatus: Payment['status'] = newStatus;
+          if (newStatus === 'Unpaid' && dueDate < today) {
+            finalStatus = 'Late';
+          }
+
+          if (p.status !== finalStatus) {
             const memberName = arisanData.members.find(m => m.id === p.memberId)?.name || 'Anggota';
             toast({
               title: 'Status Pembayaran Diperbarui',
@@ -45,7 +55,7 @@ export default function PaymentPage() {
               }.`,
             });
           }
-          return { ...p, status: newStatus };
+          return { ...p, status: finalStatus };
         }
         return p;
       })
@@ -54,10 +64,23 @@ export default function PaymentPage() {
 
   const filteredPayments = payments
     .filter(p => p.groupId === selectedGroup)
-    .map(p => ({
-      ...p,
-      member: arisanData.members.find(m => m.id === p.memberId),
-    }));
+    .map(p => {
+      const member = arisanData.members.find(m => m.id === p.memberId);
+      const dueDate = new Date(p.dueDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      let currentStatus: Payment['status'] = p.status;
+      if (p.status === 'Unpaid' && dueDate < today) {
+        currentStatus = 'Late';
+      }
+
+      return {
+        ...p,
+        status: currentStatus,
+        member,
+      };
+    });
 
   const selectedGroupName = arisanData.groups.find(g => g.id === selectedGroup)?.name;
 
