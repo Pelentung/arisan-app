@@ -39,7 +39,7 @@ import {
   } from "@/components/ui/dropdown-menu"
 
 const memberDetails = arisanData.payments
-  .filter(p => p.groupId === 'g1')
+  .filter(p => p.groupId === 'g3')
   .map((payment) => {
     const member = arisanData.members.find((m) => m.id === payment.memberId);
     const statusMapping = {
@@ -62,7 +62,7 @@ export function PaymentOverview() {
       <CardHeader>
         <CardTitle>Tinjauan Pembayaran</CardTitle>
         <CardDescription>
-          Lacak pembayaran untuk siklus "Arisan Uang Kaget Rp. 20.000" saat ini.
+          Lacak pembayaran untuk siklus "Grup Arisan Utama" saat ini.
         </CardDescription>
       </CardHeader>
       <CardContent>
