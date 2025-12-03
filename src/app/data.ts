@@ -120,6 +120,13 @@ export const arisanData: {
       cycle: 'weekly',
       memberIds: ['m1', 'm3', 'm5'],
     },
+    {
+        id: 'g3',
+        name: 'Grup Arisan Utama',
+        contributionAmount: 50000,
+        cycle: 'monthly',
+        memberIds: ['m1', 'm2', 'm4'],
+      },
   ],
   payments: [
     { id: 'p1', memberId: 'm1', groupId: 'g1', amount: 20000, dueDate: '2024-08-10', status: 'Unpaid' },

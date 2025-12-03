@@ -193,12 +193,16 @@ export default function ManageGroupsPage() {
   
   const group1 = arisanData.groups.find(g => g.id === 'g2'); // 10.000
   const group2 = arisanData.groups.find(g => g.id === 'g1'); // 20.000
+  const group3 = arisanData.groups.find(g => g.id === 'g3'); // Utama
 
   const membersGroup1 = arisanData.members.filter(member =>
     group1?.memberIds.includes(member.id)
   );
   const membersGroup2 = arisanData.members.filter(member =>
     group2?.memberIds.includes(member.id)
+  );
+  const membersGroup3 = arisanData.members.filter(member =>
+    group3?.memberIds.includes(member.id)
   );
 
   return (
@@ -208,7 +212,7 @@ export default function ManageGroupsPage() {
         <main className="flex-1 p-4 md:p-6 space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="font-headline text-2xl font-bold tracking-tight text-foreground/90 sm:text-3xl">
-              Grup Arisan Utama
+              Kelola Grup Arisan
             </h1>
             <Button onClick={() => setIsDialogOpen(true)}>
               <PlusCircle className="mr-2 h-4 w-4" />
@@ -216,9 +220,10 @@ export default function ManageGroupsPage() {
             </Button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
             {group1 && <GroupManagementCard group={group1} members={membersGroup1} />}
             {group2 && <GroupManagementCard group={group2} members={membersGroup2} />}
+            {group3 && <GroupManagementCard group={group3} members={membersGroup3} />}
           </div>
         </main>
       </div>
