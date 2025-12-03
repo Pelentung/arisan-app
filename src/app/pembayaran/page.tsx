@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { arisanData, type Payment, type Member } from '@/app/data';
+import { useState, useMemo, useCallback } from 'react';
+import { arisanData, type DetailedPayment, type Member } from '@/app/data';
 import { Header } from '@/components/layout/header';
 import {
   Card,
@@ -24,74 +24,104 @@ import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 
-type PaymentDetail = Payment & { member?: Member };
+type PaymentDetail = DetailedPayment & { member?: Member };
+type ContributionType = keyof DetailedPayment['contributions'];
+
+const contributionLabels: Record<ContributionType, string> = {
+  main: 'Iuran Utama',
+  cash: 'Iuran Kas',
+  sick: 'Iuran Sakit',
+  bereavement: 'Iuran Kemalangan',
+  other: 'Iuran Lainnya',
+};
 
 export default function PaymentPage() {
   const { toast } = useToast();
-  const [payments, setPayments] = useState<PaymentDetail[]>(arisanData.payments);
-  const [selectedGroup, setSelectedGroup] = useState('g1');
+  const [payments, setPayments] = useState<DetailedPayment[]>(arisanData.payments);
+  const [selectedGroup, setSelectedGroup] = useState('g3'); // Default to 'Grup Arisan Utama'
 
-  const handlePaymentChange = (paymentId: string, isPaid: boolean) => {
+  const calculatePaymentStatus = useCallback((payment: DetailedPayment): { status: DetailedPayment['status'], totalAmount: number, allPaid: boolean } => {
+    const { contributions, dueDate } = payment;
+    let allPaid = true;
+    let totalAmount = 0;
+
+    for (const key in contributions) {
+        const type = key as ContributionType;
+        totalAmount += contributions[type].amount;
+        if (!contributions[type].paid) {
+            allPaid = false;
+        }
+    }
+
+    let status: DetailedPayment['status'] = 'Unpaid';
+    if (allPaid) {
+      status = 'Paid';
+    } else {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (new Date(dueDate) < today) {
+        status = 'Late';
+      }
+    }
+    
+    return { status, totalAmount, allPaid };
+  }, []);
+
+  const handlePaymentChange = (paymentId: string, contributionType: ContributionType, isPaid: boolean) => {
     setPayments(prevPayments =>
       prevPayments.map(p => {
         if (p.id === paymentId) {
-          const newStatus = isPaid ? 'Paid' : 'Unpaid';
+          const updatedContributions = {
+            ...p.contributions,
+            [contributionType]: { ...p.contributions[contributionType], paid: isPaid },
+          };
+
+          const newP: DetailedPayment = { ...p, contributions: updatedContributions };
           
-          const dueDate = new Date(p.dueDate);
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
+          const { status, totalAmount } = calculatePaymentStatus(newP);
+          newP.status = status;
+          newP.totalAmount = totalAmount;
 
-          let finalStatus: Payment['status'] = newStatus;
-          if (newStatus === 'Unpaid' && dueDate < today) {
-            finalStatus = 'Late';
-          }
-
-          if (p.status !== finalStatus) {
-            const memberName = arisanData.members.find(m => m.id === p.memberId)?.name || 'Anggota';
-            toast({
-              title: 'Status Pembayaran Diperbarui',
-              description: `Pembayaran untuk ${memberName} ditandai sebagai ${
-                isPaid ? 'Lunas' : 'Belum Lunas'
-              }.`,
-            });
-          }
-          return { ...p, status: finalStatus };
+          const memberName = arisanData.members.find(m => m.id === p.memberId)?.name || 'Anggota';
+          toast({
+            title: 'Status Iuran Diperbarui',
+            description: `${contributionLabels[contributionType]} untuk ${memberName} ${isPaid ? 'sudah' : 'belum'} dibayar.`,
+          });
+          
+          return newP;
         }
         return p;
       })
     );
   };
-
-  const filteredPayments = payments
-    .filter(p => p.groupId === selectedGroup)
-    .map(p => {
-      const member = arisanData.members.find(m => m.id === p.memberId);
-      const dueDate = new Date(p.dueDate);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      let currentStatus: Payment['status'] = p.status;
-      if (p.status === 'Unpaid' && dueDate < today) {
-        currentStatus = 'Late';
-      }
-
-      return {
+  
+  const filteredPayments = useMemo(() => {
+    return payments
+      .filter(p => p.groupId === selectedGroup)
+      .map(p => ({
         ...p,
-        status: currentStatus,
-        member,
-      };
-    });
+        member: arisanData.members.find(m => m.id === p.memberId),
+      }));
+  }, [payments, selectedGroup]);
 
-  const selectedGroupName = arisanData.groups.find(g => g.id === selectedGroup)?.name;
 
   const saveAllChanges = () => {
     // In a real app, this would send the updated 'payments' state to your backend API.
+    // For now, we update the global mock data.
+    arisanData.payments = payments;
     console.log("Saving changes:", payments);
     toast({
         title: "Perubahan Disimpan",
         description: "Semua status pembayaran telah disimpan."
     })
   }
+  
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+    }).format(amount);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -122,70 +152,84 @@ export default function PaymentPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[80px]">Lunas</TableHead>
-                  <TableHead>Anggota</TableHead>
-                  <TableHead>Bulan Berjalan</TableHead>
-                  <TableHead className="text-right">Jumlah</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredPayments.length > 0 ? (
-                  filteredPayments.map(payment => (
-                    <TableRow key={payment.id} data-state={payment.status === 'Paid' ? 'selected' : ''}>
-                      <TableCell>
-                        <Checkbox
-                          id={`paid-${payment.id}`}
-                          checked={payment.status === 'Paid'}
-                          onCheckedChange={checked =>
-                            handlePaymentChange(payment.id, !!checked)
-                          }
-                          aria-label={`Tandai ${payment.member?.name} sebagai lunas`}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-9 w-9">
-                            <AvatarImage src={payment.member?.avatarUrl} data-ai-hint={payment.member?.avatarHint} />
-                            <AvatarFallback>
-                              {payment.member?.name.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="font-medium">{payment.member?.name}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(payment.dueDate).toLocaleDateString('id-ID', {
-                          month: 'long',
-                          year: 'numeric',
-                        })}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {new Intl.NumberFormat('id-ID', {
-                          style: 'currency',
-                          currency: 'IDR',
-                          minimumFractionDigits: 0,
-                        }).format(payment.amount)}
+            <div className='overflow-x-auto'>
+              <Table className="min-w-[1000px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className='sticky left-0 bg-background z-10 w-[200px]'>Nama</TableHead>
+                    <TableHead>Bulan</TableHead>
+                    {(Object.keys(contributionLabels) as ContributionType[]).map(key => (
+                      contributionLabels[key] && <TableHead key={key}>{contributionLabels[key]}</TableHead>
+                    ))}
+                    <TableHead className="text-right">Jumlah</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredPayments.length > 0 ? (
+                    filteredPayments.map(payment => (
+                      <TableRow key={payment.id} data-state={payment.status === 'Paid' ? 'selected' : ''}>
+                        <TableCell className="font-medium sticky left-0 bg-background z-10 w-[200px]">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-9 w-9 hidden sm:flex">
+                              <AvatarImage src={payment.member?.avatarUrl} data-ai-hint={payment.member?.avatarHint} />
+                              <AvatarFallback>
+                                {payment.member?.name.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>{payment.member?.name}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {new Date(payment.dueDate).toLocaleDateString('id-ID', {
+                            month: 'long',
+                            year: 'numeric',
+                          })}
+                        </TableCell>
+                         {(Object.keys(payment.contributions) as ContributionType[]).map(type => (
+                          payment.contributions[type].amount > 0 && (
+                            <TableCell key={type}>
+                               <div className="flex items-center gap-2">
+                                <Checkbox
+                                  id={`paid-${payment.id}-${type}`}
+                                  checked={payment.contributions[type].paid}
+                                  onCheckedChange={checked =>
+                                    handlePaymentChange(payment.id, type, !!checked)
+                                  }
+                                  aria-label={`Tandai ${contributionLabels[type]} untuk ${payment.member?.name} lunas`}
+                                />
+                                <label
+                                  htmlFor={`paid-${payment.id}-${type}`}
+                                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                >
+                                    {formatCurrency(payment.contributions[type].amount)}
+                                </label>
+                               </div>
+                            </TableCell>
+                          )
+                        ))}
+                        <TableCell className="text-right">
+                          {formatCurrency(payment.totalAmount)}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell
+                        colSpan={8}
+                        className="text-center text-muted-foreground py-8"
+                      >
+                        Tidak ada data pembayaran untuk grup ini.
                       </TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={4}
-                      className="text-center text-muted-foreground py-8"
-                    >
-                      Tidak ada data pembayaran untuk grup ini.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       </main>
     </div>
   );
 }
+
+    

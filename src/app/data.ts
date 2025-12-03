@@ -26,13 +26,20 @@ export interface Group {
   winnerHistory?: { month: string; memberId: string }[];
 }
 
-export interface Payment {
+export interface DetailedPayment {
   id: string;
   memberId: string;
   groupId: string;
-  amount: number;
   dueDate: string;
-  status: 'Paid' | 'Unpaid' | 'Late';
+  contributions: {
+    main: { amount: number; paid: boolean };
+    cash: { amount: number; paid: boolean };
+    sick: { amount: number; paid: boolean };
+    bereavement: { amount: number; paid: boolean };
+    other: { amount: number; paid: boolean };
+  };
+  totalAmount: number; // This will be calculated
+  status: 'Paid' | 'Unpaid' | 'Late'; // This will be calculated
 }
 
 export interface Expense {
@@ -55,7 +62,7 @@ export interface Note {
 export const arisanData: {
   members: Member[];
   groups: Group[];
-  payments: Payment[];
+  payments: DetailedPayment[];
   expenses: Expense[];
   notes: Note[];
 } = {
@@ -164,14 +171,14 @@ export const arisanData: {
       },
   ],
   payments: [
-    { id: 'p1', memberId: 'm1', groupId: 'g1', amount: 20000, dueDate: '2024-08-10', status: 'Unpaid' },
-    { id: 'p2', memberId: 'm2', groupId: 'g1', amount: 20000, dueDate: '2024-08-10', status: 'Paid' },
-    { id: 'p3', memberId: 'm3', groupId: 'g1', amount: 20000, dueDate: '2024-08-10', status: 'Unpaid' },
-    { id: 'p4', memberId: 'm4', groupId: 'g1', amount: 20000, dueDate: '2024-08-10', status: 'Paid' },
-    { id: 'p5', memberId: 'm5', groupId: 'g1', amount: 20000, dueDate: '2024-08-10', status: 'Unpaid' },
-    { id: 'p6', memberId: 'm1', groupId: 'g2', amount: 10000, dueDate: '2024-08-15', status: 'Paid' },
-    { id: 'p7', memberId: 'm3', groupId: 'g2', amount: 10000, dueDate: '2024-08-15', status: 'Unpaid' },
-    { id: 'p8', memberId: 'm5', groupId: 'g2', amount: 10000, dueDate: '2024-08-15', status: 'Paid' },
+    { id: 'p1', memberId: 'm1', groupId: 'g3', dueDate: '2024-08-10', contributions: { main: { amount: 50000, paid: false }, cash: { amount: 10000, paid: false }, sick: { amount: 5000, paid: false }, bereavement: { amount: 5000, paid: false }, other: { amount: 0, paid: true } }, totalAmount: 70000, status: 'Unpaid' },
+    { id: 'p2', memberId: 'm2', groupId: 'g3', dueDate: '2024-08-10', contributions: { main: { amount: 50000, paid: true }, cash: { amount: 10000, paid: true }, sick: { amount: 5000, paid: true }, bereavement: { amount: 5000, paid: true }, other: { amount: 0, paid: true } }, totalAmount: 70000, status: 'Paid' },
+    { id: 'p3', memberId: 'm4', groupId: 'g3', dueDate: '2024-08-10', contributions: { main: { amount: 50000, paid: false }, cash: { amount: 10000, paid: true }, sick: { amount: 5000, paid: false }, bereavement: { amount: 5000, paid: true }, other: { amount: 0, paid: true } }, totalAmount: 70000, status: 'Unpaid' },
+    { id: 'p4', memberId: 'm1', groupId: 'g1', dueDate: '2024-08-10', contributions: { main: { amount: 20000, paid: true }, cash: { amount: 0, paid: true }, sick: { amount: 0, paid: true }, bereavement: { amount: 0, paid: true }, other: { amount: 0, paid: true } }, totalAmount: 20000, status: 'Paid' },
+    { id: 'p5', memberId: 'm2', groupId: 'g1', dueDate: '2024-08-10', contributions: { main: { amount: 20000, paid: true }, cash: { amount: 0, paid: true }, sick: { amount: 0, paid: true }, bereavement: { amount: 0, paid: true }, other: { amount: 0, paid: true } }, totalAmount: 20000, status: 'Paid' },
+    { id: 'p6', memberId: 'm3', groupId: 'g1', dueDate: '2024-08-10', contributions: { main: { amount: 20000, paid: false }, cash: { amount: 0, paid: true }, sick: { amount: 0, paid: true }, bereavement: { amount: 0, paid: true }, other: { amount: 0, paid: true } }, totalAmount: 20000, status: 'Unpaid' },
+    { id: 'p7', memberId: 'm4', groupId: 'g1', dueDate: '2024-08-10', contributions: { main: { amount: 20000, paid: true }, cash: { amount: 0, paid: true }, sick: { amount: 0, paid: true }, bereavement: { amount: 0, paid: true }, other: { amount: 0, paid: true } }, totalAmount: 20000, status: 'Paid' },
+    { id: 'p8', memberId: 'm5', groupId: 'g1', dueDate: '2024-08-10', contributions: { main: { amount: 20000, paid: false }, cash: { amount: 0, paid: true }, sick: { amount: 0, paid: true }, bereavement: { amount: 0, paid: true }, other: { amount: 0, paid: true } }, totalAmount: 20000, status: 'Unpaid' },
   ],
   expenses: [
     { id: 'e1', date: '2024-07-20', description: 'Bantuan untuk Budi (sakit)', amount: 50000, category: 'Sakit' },
@@ -184,3 +191,5 @@ export const arisanData: {
     { id: 'n3', title: 'Daftar Kontak Penting', content: 'Ketua: Budi Santoso (0812...), Bendahara: Siti Aminah (0813...)', createdAt: '2024-07-20T08:00:00Z', updatedAt: '2024-07-20T08:00:00Z' }
   ]
 };
+
+    
