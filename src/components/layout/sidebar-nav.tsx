@@ -19,7 +19,7 @@ const navItems = [
   { href: '/laporan', label: 'Laporan', icon: FileText },
   { href: '/grup', label: 'Grup', icon: Users },
   { href: '/pembayaran', label: 'Pembayaran', icon: Coins },
-  { href: '#', label: 'Yang Menarik', icon: Trophy },
+  { href: '/undian', label: 'Yang Menarik', icon: Trophy },
 ];
 
 export function SidebarNav() {
