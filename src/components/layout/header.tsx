@@ -23,12 +23,12 @@ export function Header({ title }: { title: string }) {
       <div className="flex items-center gap-2 md:gap-4">
         <Button variant="ghost" size="icon" className="rounded-full">
           <Search />
-          <span className="sr-only">Search</span>
+          <span className="sr-only">Cari</span>
         </Button>
         <div className="relative">
             <Button variant="ghost" size="icon" className="rounded-full">
                 <Bell />
-                <span className="sr-only">Notifications</span>
+                <span className="sr-only">Notifikasi</span>
             </Button>
             <span className="absolute top-1 right-1 flex h-3 w-3">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
@@ -46,12 +46,12 @@ export function Header({ title }: { title: string }) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuLabel>Akun Saya</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Profile</DropdownMenuItem>
-            <DropdownMenuItem>Settings</DropdownMenuItem>
+            <DropdownMenuItem>Profil</DropdownMenuItem>
+            <DropdownMenuItem>Pengaturan</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Logout</DropdownMenuItem>
+            <DropdownMenuItem>Keluar</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

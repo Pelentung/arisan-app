@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
+import { id } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -34,7 +35,7 @@ import { ScrollArea } from '../ui/scroll-area';
 
 const FormSchema = z.object({
   dueDate: z.date({
-    required_error: 'A due date is required.',
+    required_error: 'Tanggal jatuh tempo harus diisi.',
   }),
 });
 
@@ -92,7 +93,7 @@ export function ReminderOptimizer({ member }: { member: Member }) {
             name="dueDate"
             render={({ field }) => (
               <FormItem className="flex flex-col">
-                <FormLabel>Current Cycle Due Date</FormLabel>
+                <FormLabel>Tanggal Jatuh Tempo Siklus Ini</FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
                     <FormControl>
@@ -104,9 +105,9 @@ export function ReminderOptimizer({ member }: { member: Member }) {
                         )}
                       >
                         {field.value ? (
-                          format(field.value, 'PPP')
+                          format(field.value, 'PPP', { locale: id })
                         ) : (
-                          <span>Pick a date</span>
+                          <span>Pilih tanggal</span>
                         )}
                         <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                       </Button>
@@ -114,6 +115,7 @@ export function ReminderOptimizer({ member }: { member: Member }) {
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
+                      locale={id}
                       mode="single"
                       selected={field.value}
                       onSelect={field.onChange}
@@ -123,7 +125,7 @@ export function ReminderOptimizer({ member }: { member: Member }) {
                   </PopoverContent>
                 </Popover>
                 <FormDescription>
-                  Select the due date for the upcoming payment.
+                  Pilih tanggal jatuh tempo untuk pembayaran berikutnya.
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -131,7 +133,7 @@ export function ReminderOptimizer({ member }: { member: Member }) {
           />
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isLoading ? 'Generating...' : 'Generate Schedule'}
+            {isLoading ? 'Membuat Jadwal...' : 'Buat Jadwal'}
           </Button>
         </form>
       </Form>
@@ -140,7 +142,7 @@ export function ReminderOptimizer({ member }: { member: Member }) {
         <div className="mt-8 space-y-6">
             <Card>
                 <CardHeader>
-                    <CardTitle>AI Generated Schedule</CardTitle>
+                    <CardTitle>Jadwal Buatan AI</CardTitle>
                 </CardHeader>
                 <CardContent>
                     {parsedSchedule && parsedSchedule.reminders.length > 0 ? (
@@ -149,13 +151,13 @@ export function ReminderOptimizer({ member }: { member: Member }) {
                             {(parsedSchedule.reminders as Reminder[]).map((reminder, index) => (
                                 <li key={index} className="flex items-start gap-4">
                                 <div className="flex-shrink-0 w-16 text-right">
-                                    <p className="font-semibold text-sm">{format(new Date(reminder.date), 'MMM d')}</p>
+                                    <p className="font-semibold text-sm">{format(new Date(reminder.date), 'd MMM', { locale: id })}</p>
                                     <p className="text-xs text-muted-foreground">{reminder.time}</p>
                                 </div>
                                 <div className="relative w-full">
                                     <span className="absolute left-0 top-1.5 h-full w-px bg-border -translate-x-3.5"></span>
                                     <span className="absolute left-0 top-2 h-2 w-2 rounded-full bg-primary -translate-x-4"></span>
-                                    <p className="font-medium capitalize text-sm">{reminder.channel} Reminder</p>
+                                    <p className="font-medium capitalize text-sm">Pengingat {reminder.channel}</p>
                                     <p className="text-sm text-muted-foreground">{reminder.message}</p>
                                 </div>
                                 </li>
@@ -163,14 +165,14 @@ export function ReminderOptimizer({ member }: { member: Member }) {
                             </ul>
                         </ScrollArea>
                     ) : (
-                        <p className="text-muted-foreground">No reminders suggested.</p>
+                        <p className="text-muted-foreground">Tidak ada pengingat yang disarankan.</p>
                     )}
                 </CardContent>
             </Card>
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Reasoning</CardTitle>
+                    <CardTitle>Alasan</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <p className="text-sm text-muted-foreground">{result.reasoning}</p>

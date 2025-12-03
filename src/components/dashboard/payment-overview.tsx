@@ -40,7 +40,12 @@ import {
 
 const memberDetails = arisanData.payments.map((payment) => {
   const member = arisanData.members.find((m) => m.id === payment.memberId);
-  return { ...payment, member };
+  const statusMapping = {
+    'Paid': 'Lunas',
+    'Unpaid': 'Belum Lunas',
+    'Late': 'Terlambat',
+  }
+  return { ...payment, member, status: statusMapping[payment.status] as 'Lunas' | 'Belum Lunas' | 'Terlambat' };
 });
 
 export function PaymentOverview() {
@@ -53,9 +58,9 @@ export function PaymentOverview() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Payment Overview</CardTitle>
+        <CardTitle>Tinjauan Pembayaran</CardTitle>
         <CardDescription>
-          Track payments for the current cycle of "Arisan Utama 2024".
+          Lacak pembayaran untuk siklus "Arisan Utama 2024" saat ini.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -63,10 +68,10 @@ export function PaymentOverview() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Member</TableHead>
+                <TableHead>Anggota</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-right">Jumlah</TableHead>
+                <TableHead className="text-right">Tindakan</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -86,11 +91,11 @@ export function PaymentOverview() {
                   <TableCell>
                     <Badge
                       variant={
-                        detail.status === 'Paid'
+                        detail.status === 'Lunas'
                           ? 'secondary'
                           : 'destructive'
                       }
-                      className={detail.status === 'Paid' ? 'bg-green-500/20 text-green-400 border-green-500/20' : ''}
+                      className={detail.status === 'Lunas' ? 'bg-green-500/20 text-green-400 border-green-500/20' : ''}
                     >
                       {detail.status}
                     </Badge>
@@ -103,11 +108,11 @@ export function PaymentOverview() {
                     }).format(detail.amount)}
                   </TableCell>
                   <TableCell className="text-right">
-                    {detail.status !== 'Paid' && (
+                    {detail.status !== 'Lunas' && (
                         <SheetTrigger asChild>
                             <Button variant="ghost" size="icon" onClick={() => handleOptimizeClick(detail.member!)}>
                                 <Bot className="h-4 w-4 text-primary" />
-                                <span className="sr-only">Optimize Reminder</span>
+                                <span className="sr-only">Optimalkan Pengingat</span>
                             </Button>
                         </SheetTrigger>
                     )}
@@ -115,13 +120,13 @@ export function PaymentOverview() {
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon">
                                 <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">More actions</span>
+                                <span className="sr-only">Tindakan lainnya</span>
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem>Log Payment</DropdownMenuItem>
-                            <DropdownMenuItem>View History</DropdownMenuItem>
+                            <DropdownMenuLabel>Tindakan</DropdownMenuLabel>
+                            <DropdownMenuItem>Catat Pembayaran</DropdownMenuItem>
+                            <DropdownMenuItem>Lihat Riwayat</DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -133,9 +138,9 @@ export function PaymentOverview() {
           {selectedMember && (
             <SheetContent className="sm:max-w-lg">
               <SheetHeader>
-                <SheetTitle>Optimize Payment Reminder</SheetTitle>
+                <SheetTitle>Optimalkan Pengingat Pembayaran</SheetTitle>
                 <SheetDescription>
-                  Generate an optimal reminder schedule for {selectedMember.name} using AI.
+                  Hasilkan jadwal pengingat optimal untuk {selectedMember.name} menggunakan AI.
                 </SheetDescription>
               </SheetHeader>
               <ReminderOptimizer member={selectedMember} />

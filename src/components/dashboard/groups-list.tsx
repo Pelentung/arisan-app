@@ -15,8 +15,8 @@ export function GroupsList() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Arisan Groups</CardTitle>
-        <CardDescription>Manage and view all family arisan groups.</CardDescription>
+        <CardTitle>Grup Arisan</CardTitle>
+        <CardDescription>Kelola dan lihat semua grup arisan keluarga.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
         {arisanData.groups.map((group) => (
@@ -24,7 +24,7 @@ export function GroupsList() {
             <div className="flex-1 space-y-1">
               <p className="text-sm font-medium leading-none">{group.name}</p>
               <p className="text-sm text-muted-foreground">
-                {group.memberIds.length} members
+                {group.memberIds.length} anggota
               </p>
             </div>
             <div className="text-right">
@@ -35,7 +35,7 @@ export function GroupsList() {
                     minimumFractionDigits: 0,
                 }).format(group.contributionAmount)}
                 </p>
-                <p className="text-xs text-muted-foreground capitalize">{group.cycle}</p>
+                <p className="text-xs text-muted-foreground capitalize">{group.cycle === 'monthly' ? 'Bulanan' : 'Mingguan'}</p>
             </div>
           </div>
         ))}
@@ -43,7 +43,7 @@ export function GroupsList() {
       <CardFooter>
         <Button className="w-full">
           <Users className="mr-2 h-4 w-4" />
-          Manage Groups
+          Kelola Grup
         </Button>
       </CardFooter>
     </Card>

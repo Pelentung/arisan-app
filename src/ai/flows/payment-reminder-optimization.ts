@@ -17,20 +17,20 @@ import {z} from 'genkit';
 
 // Define the input schema for the flow
 const PaymentReminderOptimizationInputSchema = z.object({
-  memberId: z.string().describe('The ID of the arisan member.'),
+  memberId: z.string().describe('ID anggota arisan.'),
   paymentHistory: z
     .string()
     .describe(
-      'A JSON string containing the payment history of the member, including due dates, amounts paid, and late payments.'
+      'String JSON yang berisi riwayat pembayaran anggota, termasuk tanggal jatuh tempo, jumlah yang dibayar, dan pembayaran yang terlambat.'
     ),
   communicationPreferences: z
     .string()
     .describe(
-      'A JSON string containing the member communication preferences, including preferred channels (email, SMS, etc.) and preferred times of day.'
+      'String JSON yang berisi preferensi komunikasi anggota, termasuk saluran pilihan (email, SMS, dll.) dan waktu yang disukai dalam sehari.'
     ),
   currentCycleDueDate: z
     .string()
-    .describe('Due date for the current payment cycle in ISO format (YYYY-MM-DD).'),
+    .describe('Tanggal jatuh tempo untuk siklus pembayaran saat ini dalam format ISO (YYYY-MM-DD).'),
 });
 export type PaymentReminderOptimizationInput = z.infer<
   typeof PaymentReminderOptimizationInputSchema
@@ -41,12 +41,12 @@ const PaymentReminderOptimizationOutputSchema = z.object({
   reminderSchedule: z
     .string()
     .describe(
-      'A JSON string containing the optimized reminder schedule, including dates/times and channels for sending reminders.'
+      'String JSON yang berisi jadwal pengingat yang dioptimalkan, termasuk tanggal/waktu dan saluran untuk mengirim pengingat.'
     ),
   reasoning: z
     .string()
     .describe(
-      'The AI reasoning behind the optimized reminder schedule, explaining why the chosen schedule is expected to improve on-time payment rates.'
+      'Alasan AI di balik jadwal pengingat yang dioptimalkan, menjelaskan mengapa jadwal yang dipilih diharapkan dapat meningkatkan tingkat pembayaran tepat waktu.'
     ),
 });
 export type PaymentReminderOptimizationOutput = z.infer<
@@ -65,36 +65,37 @@ const paymentReminderOptimizationPrompt = ai.definePrompt({
   name: 'paymentReminderOptimizationPrompt',
   input: {schema: PaymentReminderOptimizationInputSchema},
   output: {schema: PaymentReminderOptimizationOutputSchema},
-  prompt: `You are an AI assistant designed to optimize payment reminder schedules for arisan members.
+  prompt: `Anda adalah asisten AI yang dirancang untuk mengoptimalkan jadwal pengingat pembayaran untuk anggota arisan.
+  Semua keluaran harus dalam Bahasa Indonesia.
 
-  Given the following information about a member:
-  - Member ID: {{{memberId}}}
-  - Payment History: {{{paymentHistory}}}
-  - Communication Preferences: {{{communicationPreferences}}}
-  - Current Cycle Due Date: {{{currentCycleDueDate}}}
+  Berdasarkan informasi anggota berikut:
+  - ID Anggota: {{{memberId}}}
+  - Riwayat Pembayaran: {{{paymentHistory}}}
+  - Preferensi Komunikasi: {{{communicationPreferences}}}
+  - Tanggal Jatuh Tempo Siklus Saat Ini: {{{currentCycleDueDate}}}
 
-  Determine the optimal timing and frequency for sending payment reminders to this member to improve on-time payment rates.
+  Tentukan waktu dan frekuensi optimal untuk mengirim pengingat pembayaran kepada anggota ini untuk meningkatkan tingkat pembayaran tepat waktu.
 
-  Consider the member's payment history, communication preferences, and the due date. Provide a reminder schedule in JSON format and explain your reasoning for the chosen schedule.
+  Pertimbangkan riwayat pembayaran anggota, preferensi komunikasi, dan tanggal jatuh tempo. Berikan jadwal pengingat dalam format JSON dan jelaskan alasan Anda untuk jadwal yang dipilih.
 
-  Example reminder schedule:
+  Contoh jadwal pengingat:
   {
     "reminders": [
       {
         "date": "YYYY-MM-DD",
         "time": "HH:MM",
         "channel": "email",
-        "message": "Friendly reminder that your arisan payment is due soon.",
+        "message": "Pengingat ramah bahwa pembayaran arisan Anda akan segera jatuh tempo.",
       },
       {
         "date": "YYYY-MM-DD",
         "time": "HH:MM",
         "channel": "SMS",
-        "message": "Arisan payment due date approaching!",
+        "message": "Tanggal jatuh tempo pembayaran arisan mendekat!",
       },
     ],
   }
-  Return both reminderSchedule and reasoning in the following JSON format:
+  Kembalikan reminderSchedule dan reasoning dalam format JSON berikut:
   {
     "reminderSchedule": "string",
     "reasoning": "string"

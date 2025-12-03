@@ -41,8 +41,8 @@ export function WinnerSelection() {
     const eligibleMembers = arisanData.members.filter(m => m.id !== currentWinner?.id);
     if (eligibleMembers.length === 0) {
         toast({
-            title: "Draw Failed",
-            description: "Not enough eligible members to draw a new winner.",
+            title: "Undian Gagal",
+            description: "Tidak cukup anggota yang memenuhi syarat untuk mengundi pemenang baru.",
             variant: "destructive",
         });
         return;
@@ -57,8 +57,8 @@ export function WinnerSelection() {
       setIsDrawing(false);
       setShowWinnerDialog(true);
       toast({
-        title: "🎉 New Winner Drawn! 🎉",
-        description: `Congratulations to ${newWinner.name}!`,
+        title: "🎉 Pemenang Baru Telah Diundi! 🎉",
+        description: `Selamat kepada ${newWinner.name}!`,
       });
     }, 2000); // Simulate drawing animation
   };
@@ -67,16 +67,16 @@ export function WinnerSelection() {
     <>
       <Card>
         <CardHeader className="pb-4">
-          <CardTitle>Winner Selection</CardTitle>
+          <CardTitle>Pemilihan Pemenang</CardTitle>
           <CardDescription>
-            Current cycle winner and draw for the next.
+            Pemenang siklus saat ini dan undian untuk selanjutnya.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center justify-center gap-4 text-center">
             <Trophy className={cn("w-16 h-16 text-amber-400 transition-transform duration-500", isDrawing && "animate-pulse scale-110")}/>
             {currentWinner ? (
                 <>
-                <p className="text-sm text-muted-foreground">This Cycle's Winner</p>
+                <p className="text-sm text-muted-foreground">Pemenang Siklus Ini</p>
                 <div className="flex items-center gap-3">
                     <Avatar>
                     <AvatarImage src={currentWinner.avatarUrl} data-ai-hint={currentWinner.avatarHint} />
@@ -86,12 +86,12 @@ export function WinnerSelection() {
                 </div>
                 </>
             ) : (
-                <p>No winner selected yet.</p>
+                <p>Belum ada pemenang yang dipilih.</p>
             )}
         </CardContent>
         <CardFooter>
           <Button className="w-full" onClick={handleDrawWinner} disabled={isDrawing}>
-            {isDrawing ? "Drawing..." : "Draw Next Winner"}
+            {isDrawing ? "Mengundi..." : "Undi Pemenang Berikutnya"}
           </Button>
         </CardFooter>
       </Card>
@@ -99,8 +99,8 @@ export function WinnerSelection() {
       <Dialog open={showWinnerDialog} onOpenChange={setShowWinnerDialog}>
         <DialogContent className="sm:max-w-md text-center">
           <DialogHeader>
-            <DialogTitle className="text-center text-2xl font-headline">Congratulations!</DialogTitle>
-            <DialogDescription className="text-center">A new winner has been selected.</DialogDescription>
+            <DialogTitle className="text-center text-2xl font-headline">Selamat!</DialogTitle>
+            <DialogDescription className="text-center">Pemenang baru telah dipilih.</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center justify-center space-y-4 py-8">
             <Trophy className="w-20 h-20 text-amber-400" />

@@ -15,10 +15,10 @@ import {
 import { Separator } from '../ui/separator';
 
 const navItems = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '#', label: 'Groups', icon: Users },
-  { href: '#', label: 'Payments', icon: Coins },
-  { href: '#', label: 'Winners', icon: Trophy },
+  { href: '/', label: 'Dasbor', icon: LayoutDashboard },
+  { href: '#', label: 'Grup', icon: Users },
+  { href: '#', label: 'Pembayaran', icon: Coins },
+  { href: '#', label: 'Pemenang', icon: Trophy },
 ];
 
 export function SidebarNav() {
@@ -56,10 +56,10 @@ export function SidebarNav() {
         <Separator className="my-2" />
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={pathname === '/settings'} tooltip={'Settings'}>
+            <SidebarMenuButton asChild isActive={pathname === '/settings'} tooltip={'Pengaturan'}>
               <Link href="#">
                 <Settings />
-                <span>Settings</span>
+                <span>Pengaturan</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
