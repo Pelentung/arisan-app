@@ -187,9 +187,10 @@ export const arisanData: {
       },
   ],
   payments: [
-    { id: 'p1', memberId: 'm1', groupId: 'g3', dueDate: '2024-08-10', contributions: { main: { amount: 50000, paid: false }, cash: { amount: 10000, paid: false }, sick: { amount: 5000, paid: false }, bereavement: { amount: 5000, paid: false }, other1: { amount: 0, paid: true } }, totalAmount: 70000, status: 'Unpaid' },
-    { id: 'p2', memberId: 'm2', groupId: 'g3', dueDate: '2024-08-10', contributions: { main: { amount: 50000, paid: true }, cash: { amount: 10000, paid: true }, sick: { amount: 5000, paid: true }, bereavement: { amount: 5000, paid: true }, other1: { amount: 0, paid: true } }, totalAmount: 70000, status: 'Paid' },
-    { id: 'p3', memberId: 'm4', groupId: 'g3', dueDate: '2024-08-10', contributions: { main: { amount: 50000, paid: false }, cash: { amount: 10000, paid: true }, sick: { amount: 5000, paid: false }, bereavement: { amount: 5000, paid: true }, other1: { amount: 0, paid: true } }, totalAmount: 70000, status: 'Unpaid' },
+    // The amounts here will be dynamically replaced by the values from contributionSettings
+    { id: 'p1', memberId: 'm1', groupId: 'g3', dueDate: '2024-08-10', contributions: { main: { amount: 0, paid: false }, cash: { amount: 0, paid: false }, sick: { amount: 0, paid: false }, bereavement: { amount: 0, paid: false }, other1: { amount: 0, paid: false } }, totalAmount: 0, status: 'Unpaid' },
+    { id: 'p2', memberId: 'm2', groupId: 'g3', dueDate: '2024-08-10', contributions: { main: { amount: 0, paid: true }, cash: { amount: 0, paid: true }, sick: { amount: 0, paid: true }, bereavement: { amount: 0, paid: true }, other1: { amount: 0, paid: true } }, totalAmount: 0, status: 'Paid' },
+    { id: 'p3', memberId: 'm4', groupId: 'g3', dueDate: '2024-08-10', contributions: { main: { amount: 0, paid: false }, cash: { amount: 0, paid: true }, sick: { amount: 0, paid: false }, bereavement: { amount: 0, paid: true }, other1: { amount: 0, paid: false } }, totalAmount: 0, status: 'Unpaid' },
     { id: 'p4', memberId: 'm1', groupId: 'g1', dueDate: '2024-08-10', contributions: { main: { amount: 20000, paid: true } }, totalAmount: 20000, status: 'Paid' },
     { id: 'p5', memberId: 'm2', groupId: 'g1', dueDate: '2024-08-10', contributions: { main: { amount: 20000, paid: true } }, totalAmount: 20000, status: 'Paid' },
     { id: 'p6', memberId: 'm3', groupId: 'g1', dueDate: '2024-08-10', contributions: { main: { amount: 20000, paid: false } }, totalAmount: 20000, status: 'Unpaid' },

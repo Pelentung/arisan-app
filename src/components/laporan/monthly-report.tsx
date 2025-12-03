@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -34,55 +35,91 @@ export function MonthlyReport() {
     const monthOptions = useMemo(() => generateMonthOptions(), []);
     // Set default to be the latest month available in options
     const [selectedMonth, setSelectedMonth] = useState(monthOptions[0].value);
+    const { contributionSettings } = arisanData;
 
     const reportData = useMemo(() => {
         const [year, month] = selectedMonth.split('-').map(Number);
         
-        const group = arisanData.groups.find(g => g.id === 'g1');
-        if (!group) return { cashIn: 0, cashOut: 0, endingBalance: 0, winner: null, transactions: [] };
-
-        const transactions = arisanData.payments
+        const mainGroup = arisanData.groups.find(g => g.id === 'g3');
+        if (!mainGroup) return { cashIn: 0, cashOut: 0, endingBalance: 0, winner: null, transactions: [], sickFund: 0, bereavementFund: 0 };
+        
+        const allPaymentsForMonth = arisanData.payments
             .filter(p => {
                 const paymentDueDate = new Date(p.dueDate);
-                return p.groupId === group.id && 
-                       getYear(paymentDueDate) === year && 
-                       getMonth(paymentDueDate) === month;
+                return getYear(paymentDueDate) === year && getMonth(paymentDueDate) === month;
             });
         
-        const paidTransactions = transactions.filter(t => t.status === 'Paid');
+        const mainGroupPayments = allPaymentsForMonth.filter(p => p.groupId === mainGroup.id);
 
-        const cashIn = paidTransactions.reduce((sum, p) => sum + p.amount, 0);
+        let cashIn = 0;
+        let sickFund = 0;
+        let bereavementFund = 0;
+        
+        mainGroupPayments.forEach(p => {
+            if (p.contributions.main?.paid) cashIn += contributionSettings.main;
+            if (p.contributions.cash?.paid) cashIn += contributionSettings.cash;
+            if (p.contributions.sick?.paid) sickFund += contributionSettings.sick;
+            if (p.contributions.bereavement?.paid) bereavementFund += contributionSettings.bereavement;
+            contributionSettings.others.forEach(other => {
+                if (p.contributions[other.id]?.paid) cashIn += other.amount;
+            })
+        });
+
+        // Add other groups' main contribution to cashIn
+        allPaymentsForMonth.forEach(p => {
+            if (p.groupId !== mainGroup.id && p.status === 'Paid') {
+                const group = arisanData.groups.find(g => g.id === p.groupId);
+                if(group) cashIn += group.contributionAmount;
+            }
+        });
         
         const monthString = `${year}-${String(month + 1).padStart(2, '0')}`;
-        const winnerEntry = group.winnerHistory?.find(wh => wh.month.startsWith(`${year}-${month + 1}`) || wh.month === `${year}-${String(month + 1).padStart(2, '0')}`);
+        const winnerEntry = mainGroup.winnerHistory?.find(wh => wh.month.startsWith(`${year}-${month + 1}`) || wh.month === `${year}-${String(month + 1).padStart(2, '0')}`);
         
         let winner = null;
         if (winnerEntry) {
             winner = arisanData.members.find(m => m.id === winnerEntry.memberId);
         }
         
-        const cashOut = winner ? group.contributionAmount * group.memberIds.length : 0;
+        // Cash out is the total main contribution for the main group
+        const cashOut = winner ? contributionSettings.main * mainGroup.memberIds.length : 0;
 
         const endingBalance = cashIn - cashOut;
 
-        const detailedTransactions = paidTransactions
+        const detailedTransactions = allPaymentsForMonth
+            .filter(p => p.status === 'Paid')
             .map(p => {
                 const member = arisanData.members.find(m => m.id === p.memberId);
+                const group = arisanData.groups.find(g => g.id === p.groupId);
                 const paymentHistoryEntry = member?.paymentHistory.find(ph => {
                     const phDate = new Date(ph.date);
                     return getYear(phDate) === year && getMonth(phDate) === month;
                 })
+                
+                let amount = 0;
+                if (group?.id === mainGroup.id) {
+                    amount = (p.contributions.main?.paid ? contributionSettings.main : 0) + 
+                             (p.contributions.cash?.paid ? contributionSettings.cash : 0);
+                    contributionSettings.others.forEach(other => {
+                        if (p.contributions[other.id]?.paid) amount += other.amount;
+                    })
+                } else if (group) {
+                    amount = group.contributionAmount;
+                }
+
                 return {
                     member: member?.name || 'Tidak diketahui',
                     avatarUrl: member?.avatarUrl,
                     avatarHint: member?.avatarHint,
-                    amount: p.amount,
+                    amount: amount,
+                    description: group?.name || "Iuran",
                     date: paymentHistoryEntry ? paymentHistoryEntry.date : p.dueDate,
                 };
-            });
+            })
+            .filter(tx => tx.amount > 0);
 
-        return { cashIn, cashOut, endingBalance, winner, transactions: detailedTransactions };
-    }, [selectedMonth]);
+        return { cashIn, cashOut, endingBalance, winner, transactions: detailedTransactions, sickFund, bereavementFund };
+    }, [selectedMonth, contributionSettings]);
 
 
   return (
@@ -132,7 +169,7 @@ export function MonthlyReport() {
                 </Card>
                  <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Saldo Akhir</CardTitle>
+                        <CardTitle className="text-sm font-medium">Saldo Kas Bulan Ini</CardTitle>
                         <Banknote className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
@@ -167,13 +204,14 @@ export function MonthlyReport() {
       <Card>
         <CardHeader>
             <CardTitle>Detail Pemasukan Bulan {format(new Date(selectedMonth.split('-')[0], selectedMonth.split('-')[1]), 'MMMM yyyy', { locale: id })}</CardTitle>
-            <CardDescription>Daftar semua iuran yang telah dibayarkan pada bulan yang dipilih.</CardDescription>
+            <CardDescription>Daftar semua iuran yang telah dibayarkan pada bulan yang dipilih (tidak termasuk dana sosial).</CardDescription>
         </CardHeader>
         <CardContent>
             <Table>
                 <TableHeader>
                     <TableRow>
                         <TableHead>Anggota</TableHead>
+                        <TableHead>Keterangan</TableHead>
                         <TableHead>Tanggal Pembayaran</TableHead>
                         <TableHead className="text-right">Jumlah</TableHead>
                     </TableRow>
@@ -191,13 +229,14 @@ export function MonthlyReport() {
                                         <div className="font-medium">{tx.member}</div>
                                     </div>
                                 </TableCell>
+                                <TableCell>{tx.description}</TableCell>
                                 <TableCell>{format(new Date(tx.date), 'd MMMM yyyy', { locale: id })}</TableCell>
                                 <TableCell className="text-right">{formatCurrency(tx.amount)}</TableCell>
                             </TableRow>
                         ))
                     ) : (
                         <TableRow>
-                            <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                            <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
                                 Tidak ada data transaksi untuk bulan ini.
                             </TableCell>
                         </TableRow>
@@ -206,6 +245,28 @@ export function MonthlyReport() {
             </Table>
         </CardContent>
       </Card>
+
+       <div className="grid gap-4 sm:grid-cols-2">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Dana Sosial Sakit</CardTitle>
+                    <CardDescription>Total dana sakit yang terkumpul bulan ini.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{formatCurrency(reportData.sickFund)}</div>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Dana Sosial Kemalangan</CardTitle>
+                    <CardDescription>Total dana kemalangan yang terkumpul bulan ini.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{formatCurrency(reportData.bereavementFund)}</div>
+                </CardContent>
+            </Card>
+       </div>
+
     </div>
   );
 }

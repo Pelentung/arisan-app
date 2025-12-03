@@ -152,6 +152,8 @@ export default function PaymentPage() {
   const [payments, setPayments] = useState<DetailedPayment[]>(arisanData.payments);
   const [selectedGroup, setSelectedGroup] = useState('g3'); // Default to 'Grup Arisan Utama'
 
+  const { contributionSettings } = arisanData;
+
   const contributionLabels = useMemo(() => {
     const labels: Record<string, string> = {
         main: 'Iuran Utama',
@@ -159,20 +161,33 @@ export default function PaymentPage() {
         sick: 'Iuran Sakit',
         bereavement: 'Iuran Kemalangan',
     };
-    arisanData.contributionSettings.others.forEach(other => {
+    contributionSettings.others.forEach(other => {
         labels[other.id] = other.description;
     });
     return labels;
-  }, []);
+  }, [contributionSettings]);
 
-  const calculatePaymentStatus = useCallback((payment: DetailedPayment): { status: DetailedPayment['status'], totalAmount: number } => {
-    const { contributions } = payment;
+  const calculatePaymentDetails = useCallback((payment: DetailedPayment): { status: DetailedPayment['status'], totalAmount: number, contributions: DetailedPayment['contributions'] } => {
+    const updatedContributions: DetailedPayment['contributions'] = {
+        main: { ...payment.contributions.main, amount: contributionSettings.main },
+        cash: { ...payment.contributions.cash, amount: contributionSettings.cash },
+        sick: { ...payment.contributions.sick, amount: contributionSettings.sick },
+        bereavement: { ...payment.contributions.bereavement, amount: contributionSettings.bereavement },
+    };
+
+    contributionSettings.others.forEach(other => {
+        updatedContributions[other.id] = { 
+            ...(payment.contributions[other.id] || { paid: false }), // Keep paid status if exists
+            amount: other.amount 
+        };
+    });
+    
     let allPaid = true;
     let totalAmount = 0;
 
-    for (const key in contributions) {
+    for (const key in updatedContributions) {
       const type = key as ContributionType;
-      const contribution = contributions[type];
+      const contribution = updatedContributions[type];
       if (contribution && contribution.amount) {
         totalAmount += contribution.amount;
         if (contribution.amount > 0 && !contribution.paid) {
@@ -183,8 +198,8 @@ export default function PaymentPage() {
 
     const status: DetailedPayment['status'] = allPaid ? 'Paid' : 'Unpaid';
     
-    return { status, totalAmount };
-  }, []);
+    return { status, totalAmount, contributions: updatedContributions };
+  }, [contributionSettings]);
 
   const handleDetailedPaymentChange = (paymentId: string, contributionType: ContributionType, isPaid: boolean) => {
     setPayments(prevPayments =>
@@ -197,7 +212,8 @@ export default function PaymentPage() {
 
           const newP: DetailedPayment = { ...p, contributions: updatedContributions };
           
-          const { status } = calculatePaymentStatus(newP);
+          // Recalculate status based on the new paid status of individual contributions
+          const { status } = calculatePaymentDetails(newP);
           newP.status = status;
           
           const memberName = arisanData.members.find(m => m.id === p.memberId)?.name || 'Anggota';
@@ -245,15 +261,20 @@ export default function PaymentPage() {
     return payments
       .filter(p => p.groupId === selectedGroup)
       .map(p => {
-        const { status, totalAmount } = calculatePaymentStatus(p);
-        return {
-          ...p,
-          status,
-          totalAmount,
-          member: arisanData.members.find(m => m.id === p.memberId),
-        }
+          let updatedPayment = { ...p, member: arisanData.members.find(m => m.id === p.memberId) };
+          if (p.groupId === 'g3') { // Only for 'Grup Arisan Utama'
+              const { status, totalAmount, contributions } = calculatePaymentDetails(p);
+              updatedPayment.status = status;
+              updatedPayment.totalAmount = totalAmount;
+              updatedPayment.contributions = contributions;
+          } else {
+              const { status, totalAmount } = calculatePaymentDetails(p); // Still need to calculate total for simple view
+              updatedPayment.status = status;
+              updatedPayment.totalAmount = p.totalAmount; // Keep original total amount for simple groups
+          }
+          return updatedPayment;
       });
-  }, [payments, selectedGroup, calculatePaymentStatus]);
+  }, [payments, selectedGroup, calculatePaymentDetails]);
 
 
   const saveAllChanges = () => {
