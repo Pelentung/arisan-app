@@ -1,0 +1,131 @@
+export interface Member {
+  id: string;
+  name: string;
+  avatarUrl: string;
+  avatarHint: string;
+  joinedDate: string;
+  paymentHistory: {
+    date: string;
+    status: 'Paid' | 'Late' | 'Unpaid';
+  }[];
+  communicationPreferences: {
+    channel: 'email' | 'SMS' | 'WhatsApp';
+    preferredTime: string;
+  };
+}
+
+export interface Group {
+  id: string;
+  name: string;
+  contributionAmount: number;
+  cycle: 'monthly' | 'weekly';
+  memberIds: string[];
+  currentWinnerId?: string;
+}
+
+export interface Payment {
+  id: string;
+  memberId: string;
+  groupId: string;
+  amount: number;
+  dueDate: string;
+  status: 'Paid' | 'Unpaid' | 'Late';
+}
+
+export const arisanData: {
+  members: Member[];
+  groups: Group[];
+  payments: Payment[];
+} = {
+  members: [
+    {
+      id: 'm1',
+      name: 'Budi Santoso',
+      avatarUrl: 'https://picsum.photos/seed/avatar1/100/100',
+      avatarHint: 'person portrait',
+      joinedDate: '2023-01-15',
+      paymentHistory: [
+        { date: '2024-05-10', status: 'Paid' },
+        { date: '2024-06-11', status: 'Late' },
+        { date: '2024-07-10', status: 'Paid' },
+      ],
+      communicationPreferences: { channel: 'WhatsApp', preferredTime: 'evening' },
+    },
+    {
+      id: 'm2',
+      name: 'Siti Aminah',
+      avatarUrl: 'https://picsum.photos/seed/avatar2/100/100',
+      avatarHint: 'person portrait',
+      joinedDate: '2023-01-15',
+      paymentHistory: [
+        { date: '2024-05-10', status: 'Paid' },
+        { date: '2024-06-10', status: 'Paid' },
+        { date: '2024-07-10', status: 'Paid' },
+      ],
+      communicationPreferences: { channel: 'email', preferredTime: 'morning' },
+    },
+    {
+      id: 'm3',
+      name: 'Agus Wijoyo',
+      avatarUrl: 'https://picsum.photos/seed/avatar3/100/100',
+      avatarHint: 'person portrait',
+      joinedDate: '2023-02-01',
+      paymentHistory: [
+        { date: '2024-05-10', status: 'Paid' },
+        { date: '2024-06-10', status: 'Paid' },
+        { date: '2024-07-12', status: 'Late' },
+      ],
+      communicationPreferences: { channel: 'SMS', preferredTime: 'afternoon' },
+    },
+    {
+      id: 'm4',
+      name: 'Dewi Lestari',
+      avatarUrl: 'https://picsum.photos/seed/avatar4/100/100',
+      avatarHint: 'person portrait',
+      joinedDate: '2023-03-20',
+      paymentHistory: [
+        { date: '2024-05-10', status: 'Paid' },
+        { date: '2024-06-10', status: 'Paid' },
+        { date: '2024-07-10', status: 'Paid' },
+      ],
+      communicationPreferences: { channel: 'WhatsApp', preferredTime: 'any' },
+    },
+    {
+      id: 'm5',
+      name: 'Eko Prasetyo',
+      avatarUrl: 'https://picsum.photos/seed/avatar5/100/100',
+      avatarHint: 'person portrait',
+      joinedDate: '2023-05-05',
+       paymentHistory: [
+        { date: '2024-05-10', status: 'Paid' },
+        { date: '2024-06-10', status: 'Paid' },
+        { date: '2024-07-10', status: 'Paid' },
+      ],
+      communicationPreferences: { channel: 'email', preferredTime: 'evening' },
+    },
+  ],
+  groups: [
+    {
+      id: 'g1',
+      name: 'Arisan Utama 2024',
+      contributionAmount: 500000,
+      cycle: 'monthly',
+      memberIds: ['m1', 'm2', 'm3', 'm4', 'm5'],
+      currentWinnerId: 'm2',
+    },
+    {
+      id: 'g2',
+      name: 'Arisan Lebaran',
+      contributionAmount: 250000,
+      cycle: 'weekly',
+      memberIds: ['m1', 'm3', 'm5'],
+    },
+  ],
+  payments: [
+    { id: 'p1', memberId: 'm1', groupId: 'g1', amount: 500000, dueDate: '2024-08-10', status: 'Unpaid' },
+    { id: 'p2', memberId: 'm2', groupId: 'g1', amount: 500000, dueDate: '2024-08-10', status: 'Paid' },
+    { id: 'p3', memberId: 'm3', groupId: 'g1', amount: 500000, dueDate: '2024-08-10', status: 'Unpaid' },
+    { id: 'p4', memberId: 'm4', groupId: 'g1', amount: 500000, dueDate: '2024-08-10', status: 'Paid' },
+    { id: 'p5', memberId: 'm5', groupId: 'g1', amount: 500000, dueDate: '2024-08-10', status: 'Unpaid' },
+  ],
+};

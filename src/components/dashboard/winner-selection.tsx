@@ -1,0 +1,117 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { arisanData, Member } from '@/app/data';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Trophy } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
+
+export function WinnerSelection() {
+  const { toast } = useToast();
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [showWinnerDialog, setShowWinnerDialog] = useState(false);
+  const [currentWinner, setCurrentWinner] = useState<Member | undefined>(undefined);
+  const [drawnWinner, setDrawnWinner] = useState<Member | undefined>(undefined);
+
+  useEffect(() => {
+    const winner = arisanData.members.find(
+      (m) => m.id === arisanData.groups[0].currentWinnerId
+    );
+    setCurrentWinner(winner);
+  }, []);
+
+  const handleDrawWinner = () => {
+    const eligibleMembers = arisanData.members.filter(m => m.id !== currentWinner?.id);
+    if (eligibleMembers.length === 0) {
+        toast({
+            title: "Draw Failed",
+            description: "Not enough eligible members to draw a new winner.",
+            variant: "destructive",
+        });
+        return;
+    }
+
+    setIsDrawing(true);
+    const randomIndex = Math.floor(Math.random() * eligibleMembers.length);
+    const newWinner = eligibleMembers[randomIndex];
+
+    setTimeout(() => {
+      setDrawnWinner(newWinner);
+      setIsDrawing(false);
+      setShowWinnerDialog(true);
+      toast({
+        title: "🎉 New Winner Drawn! 🎉",
+        description: `Congratulations to ${newWinner.name}!`,
+      });
+    }, 2000); // Simulate drawing animation
+  };
+
+  return (
+    <>
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle>Winner Selection</CardTitle>
+          <CardDescription>
+            Current cycle winner and draw for the next.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center justify-center gap-4 text-center">
+            <Trophy className={cn("w-16 h-16 text-amber-400 transition-transform duration-500", isDrawing && "animate-pulse scale-110")}/>
+            {currentWinner ? (
+                <>
+                <p className="text-sm text-muted-foreground">This Cycle's Winner</p>
+                <div className="flex items-center gap-3">
+                    <Avatar>
+                    <AvatarImage src={currentWinner.avatarUrl} data-ai-hint={currentWinner.avatarHint} />
+                    <AvatarFallback>{currentWinner.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <p className="font-semibold text-lg">{currentWinner.name}</p>
+                </div>
+                </>
+            ) : (
+                <p>No winner selected yet.</p>
+            )}
+        </CardContent>
+        <CardFooter>
+          <Button className="w-full" onClick={handleDrawWinner} disabled={isDrawing}>
+            {isDrawing ? "Drawing..." : "Draw Next Winner"}
+          </Button>
+        </CardFooter>
+      </Card>
+
+      <Dialog open={showWinnerDialog} onOpenChange={setShowWinnerDialog}>
+        <DialogContent className="sm:max-w-md text-center">
+          <DialogHeader>
+            <DialogTitle className="text-center text-2xl font-headline">Congratulations!</DialogTitle>
+            <DialogDescription className="text-center">A new winner has been selected.</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center space-y-4 py-8">
+            <Trophy className="w-20 h-20 text-amber-400" />
+            <Avatar className="w-24 h-24 border-4 border-primary">
+              <AvatarImage src={drawnWinner?.avatarUrl} data-ai-hint={drawnWinner?.avatarHint} />
+              <AvatarFallback className="text-3xl">{drawnWinner?.name.charAt(0)}</AvatarFallback>
+            </Avatar>
+            <p className="text-2xl font-bold font-headline">{drawnWinner?.name}</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
