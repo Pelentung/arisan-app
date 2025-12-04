@@ -1,3 +1,4 @@
+
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
@@ -35,16 +36,14 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
             setUser({ ...firebaseUser, ...userData });
             setLoading(false);
           } else {
-            // New user, check if they are the first user
-            const usersQuery = query(collection(db, 'users'), limit(1));
-            const existingUsers = await getDocs(usersQuery);
-            const isFirstUser = existingUsers.empty;
+            // New user, assign admin role based on email
+            const isAdminByEmail = firebaseUser.email === 'adminarisan@gmail.com';
 
             const newUserProfile = {
               uid: firebaseUser.uid,
               email: firebaseUser.email,
               displayName: firebaseUser.displayName,
-              isAdmin: isFirstUser, // First user is admin
+              isAdmin: isAdminByEmail,
             };
             try {
               await setDoc(userRef, newUserProfile);
