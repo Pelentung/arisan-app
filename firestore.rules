@@ -12,30 +12,27 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
-    // isAdmin checks a custom claim on the user's token.
-    // This is more secure and performant than reading a document.
-    function isAdmin() {
-      return isSignedIn() && request.auth.token.isAdmin == true;
+    // Checks the user's document in the 'users' collection to determine if they are an admin.
+    function userIsAdmin(uid) {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(uid)).data.isAdmin == true;
     }
 
-    // --- Admin Rules ---
-    // Admins have full read/write access to everything.
+    // --- Admin has full access ---
+    // This rule gives any user marked as admin in their user document full read/write access to everything.
     match /{document=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if userIsAdmin(request.auth.uid);
     }
     
-    // --- User Profile Rules ---
+    // --- User Profile Rules for non-admins ---
     match /users/{userId} {
       // Users can read their own profile.
       allow get: if isUser(userId);
-      // Users can read other profiles for display purposes (e.g., names).
+      // Logged-in users can read other user profiles for display purposes (e.g., names).
       allow list: if isSignedIn();
-      // Users cannot create, update, or delete profiles directly (admin only).
-      allow write: if isAdmin();
     }
 
-    // --- General Read Rules for Non-Admins ---
-    // Logged-in users can read data needed for reports.
+    // --- General Read-Only Rules for non-admins ---
+    // Logged-in users can read data needed for reports and general UI.
     match /groups/{groupId} {
       allow get, list: if isSignedIn();
     }
