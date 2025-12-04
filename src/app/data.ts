@@ -78,9 +78,14 @@ export interface ContributionSettings {
     others: OtherContribution[];
 }
 
+// Global array to hold all active listeners
+let activeListeners: (() => void)[] = [];
+
 export const subscribeToData = (db: Firestore, collectionName: string, callback: (data: any[]) => void) => {
     if (!db) return () => {};
+    
     const q = query(collection(db, collectionName));
+    
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const data: any[] = [];
         querySnapshot.forEach((doc) => {
@@ -97,11 +102,31 @@ export const subscribeToData = (db: Firestore, collectionName: string, callback:
         callback(data);
     }, 
     (serverError) => {
+        // Prevent firing error on logout when listeners are automatically detached
+        if (serverError.code === 'permission-denied') {
+            console.warn(`Permission denied for ${collectionName}. This might be expected on logout.`);
+            return;
+        }
         const permissionError = new FirestorePermissionError({
             path: collectionName,
             operation: 'list',
         });
         errorEmitter.emit('permission-error', permissionError);
     });
-    return unsubscribe;
+
+    // Register the listener
+    activeListeners.push(unsubscribe);
+
+    // Return a wrapper function that also removes the listener from the active list
+    return () => {
+        unsubscribe();
+        activeListeners = activeListeners.filter(listener => listener !== unsubscribe);
+    };
+};
+
+// Function to unsubscribe from all active listeners, to be called on logout
+export const unsubscribeAll = () => {
+    console.log(`Unsubscribing from ${activeListeners.length} listeners.`);
+    activeListeners.forEach(unsubscribe => unsubscribe());
+    activeListeners = [];
 };
