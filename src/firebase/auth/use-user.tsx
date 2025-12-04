@@ -26,13 +26,11 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // If Firebase services are not ready, don't do anything.
     if (!auth || !db) {
-        setLoading(false);
-        return;
+      setLoading(false);
+      return;
     }
-    
-    // This is the single, authoritative listener for authentication state.
+
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
       let userDocSnapshotUnsubscribe: () => void = () => {};
 
@@ -41,37 +39,31 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         
         userDocSnapshotUnsubscribe = onSnapshot(userRef, (docSnap) => {
           if (docSnap.exists()) {
-            // User document exists, merge auth data with Firestore data.
             setUser({ ...firebaseUser, ...docSnap.data() });
           } else {
-            // New user, create their document.
-            // Note: Custom claim `isAdmin` is set on the backend, not here.
-            // This client-side check is a fallback for initial display.
             const isAdminByEmail = firebaseUser.email === 'adminarisan@gmail.com';
             const userProfileData = {
-                uid: firebaseUser.uid,
-                email: firebaseUser.email,
-                displayName: firebaseUser.displayName,
-                isAdmin: isAdminByEmail,
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
+              isAdmin: isAdminByEmail,
             };
-            // Use setDoc with merge to safely create the document.
             setDoc(userRef, userProfileData, { merge: true }).catch(error => {
                 console.error("Error creating user document:", error);
             });
             setUser({ ...firebaseUser, ...userProfileData });
           }
-          setLoading(false);
+          setLoading(false); // <== Crucially, set loading to false only AFTER Firestore data is handled.
         }, (error) => {
             console.error("Error in user snapshot listener:", error);
-            setUser(firebaseUser); // Fallback to auth user data on error
+            setUser(firebaseUser);
             setLoading(false);
         });
 
       } else {
-        // User is signed out. Clean up everything.
-        unsubscribeAll(); // Unsubscribe from all data listeners.
+        unsubscribeAll();
         setUser(null);
-        setLoading(false);
+        setLoading(false); // <== Also set loading to false on logout.
       }
       
       // Cleanup the user document listener when auth state changes.
@@ -80,10 +72,9 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       };
     });
 
-    // This is the key: The main auth listener itself is cleaned up
-    // when the UserProvider component unmounts.
+    // Cleanup main auth listener on component unmount
     return () => unsubscribeAuth();
-  }, [auth, db]); // This effect should only re-run if auth or db instances change.
+  }, [auth, db]);
 
   const value: UserContextType = {
     user,
