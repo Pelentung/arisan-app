@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import type { Group, Member } from '@/app/data';
 import { subscribeToData } from '@/app/data';
 import { Header } from '@/components/layout/header';
@@ -371,6 +371,12 @@ export default function ManageGroupsAndMembersPage() {
     };
   }, [db]);
 
+  const displayedGroups = useMemo(() => {
+    const groupOrder = ["Arisan Utama", "Arisan Uang Kaget Rp. 20.000", "Arisan Uang Kaget Rp. 10.000"];
+    return groups
+        .filter(g => groupOrder.includes(g.name))
+        .sort((a, b) => groupOrder.indexOf(a.name) - groupOrder.indexOf(b.name));
+  }, [groups]);
 
   // Handlers for Member Management
   const handleAddMember = () => {
@@ -532,7 +538,7 @@ export default function ManageGroupsAndMembersPage() {
 
             <TabsContent value="groups">
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                {groups.map(group => {
+                {displayedGroups.map(group => {
                   const groupMembers = members.filter(member =>
                     group.memberIds.includes(member.id)
                   );
@@ -674,5 +680,3 @@ export default function ManageGroupsAndMembersPage() {
     </>
   );
 }
-
-    
