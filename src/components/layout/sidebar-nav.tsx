@@ -18,8 +18,8 @@ import { Separator } from '../ui/separator';
 const navItems = [
   { href: '/', label: 'Menu Utama', icon: LayoutDashboard },
   { href: '/laporan', label: 'Laporan', icon: FileText },
-  { href: '/grup', label: 'Kelola Grup', icon: Users },
   { href: '/grup/anggota', label: 'Anggota Grup', icon: Users },
+  { href: '/grup', label: 'Kelola Grup', icon: Users },
   { href: '/pembayaran', label: 'Pembayaran', icon: Coins },
   { href: '/pengeluaran', label: 'Pengeluaran', icon: Receipt },
   { href: '/undian', label: 'Undian Tarikan', icon: Trophy },
