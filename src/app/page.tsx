@@ -1,7 +1,6 @@
 import { Header } from '@/components/layout/header';
 import { FinancialSummary } from '@/components/dashboard/financial-summary';
 import { GroupsList } from '@/components/dashboard/groups-list';
-import { PaymentOverview } from '@/components/dashboard/payment-overview';
 import { WinnerHistory } from '@/components/dashboard/winner-history';
 import { RealTimeClock } from '@/components/dashboard/real-time-clock';
 
@@ -20,10 +19,7 @@ export default function Home() {
         <FinancialSummary />
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <PaymentOverview />
-          </div>
-          <div className="flex flex-col gap-6">
+          <div className="lg:col-span-3">
             <GroupsList />
           </div>
         </div>
