@@ -1,7 +1,5 @@
 
 import { collection, onSnapshot, query, Firestore } from 'firebase/firestore';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 
 export interface Member {
   id: string;
@@ -97,11 +95,7 @@ export const subscribeToData = (db: Firestore, collectionName: string, callback:
         callback(data);
     }, 
     (serverError) => {
-      const permissionError = new FirestorePermissionError({
-        path: q.path,
-        operation: 'list',
-      });
-      errorEmitter.emit('permission-error', permissionError);
+      console.error(`Error fetching ${collectionName}:`, serverError);
     });
     return unsubscribe;
 };
