@@ -28,10 +28,10 @@ export default function UndianPage() {
   
   return (
     <div className="flex flex-col min-h-screen">
-      <Header title="Pengelolaan Undian" />
+      <Header title="Yang Sudah Narik" />
       <main className="flex-1 p-4 md:p-6 space-y-6">
         <h1 className="font-headline text-2xl font-bold tracking-tight text-foreground/90 sm:text-3xl">
-            Pengelolaan Undian Arisan
+            Daftar Anggota Yang Sudah Narik
         </h1>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -39,24 +39,21 @@ export default function UndianPage() {
             <LotteryCard 
               group={groupMain}
               title="Grup Arisan Utama"
-              description="Undian untuk yang menarik siklus berikutnya dari grup utama."
-              buttonText="Undi Yang Menarik Bulan Depan"
+              description="Daftar anggota yang sudah menarik dari grup utama."
             />
           )}
           {group20k && (
             <LotteryCard 
               group={group20k}
               title="Arisan Uang Kaget Rp. 20.000"
-              description="Undian untuk yang menarik dari grup Uang Kaget Rp. 20.000."
-              buttonText="Undi Yang Menarik Uang Kaget Rp. 20.000"
+              description="Daftar anggota yang sudah menarik dari grup Uang Kaget Rp. 20.000."
             />
           )}
           {group10k && (
             <LotteryCard 
               group={group10k}
               title="Arisan Uang Kaget Rp. 10.000"
-              description="Undian untuk yang menarik dari grup Uang Kaget Rp. 10.000."
-              buttonText="Undi Yang Menarik Uang Kaget Rp. 10.000"
+              description="Daftar anggota yang sudah menarik dari grup Uang Kaget Rp. 10.000."
             />
           )}
         </div>
@@ -64,5 +61,3 @@ export default function UndianPage() {
     </div>
   );
 }
-
-    

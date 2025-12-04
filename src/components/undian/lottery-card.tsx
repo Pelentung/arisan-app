@@ -23,7 +23,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Trophy, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -64,19 +63,28 @@ export function LotteryCard({ group, title, description }: LotteryCardProps) {
     
     const groupRef = doc(db, 'groups', group.id);
     const drawMonth = format(new Date(), 'yyyy-MM-dd');
-    const newWinnerHistory = arrayUnion({ month: drawMonth, memberId: selectedMember.id });
     
-    const dataToUpdate = {
+    let dataToUpdate: any = {
       currentWinnerId: selectedMember.id,
-      winnerHistory: newWinnerHistory
     };
+    
+    if (selectedMember.id) {
+        dataToUpdate.winnerHistory = arrayUnion({ month: drawMonth, memberId: selectedMember.id });
+    }
 
     try {
         await updateDoc(groupRef, dataToUpdate);
-        toast({
-          title: "Pemenang Telah Ditetapkan",
-          description: `Selamat, ${selectedMember.name} telah menjadi penarik arisan.`,
-        });
+        if (selectedMember.id) {
+            toast({
+              title: "Pemenang Telah Ditetapkan",
+              description: `Selamat, ${selectedMember.name} telah menjadi penarik arisan.`,
+            });
+        } else {
+            toast({
+              title: "Pemenang Dikosongkan",
+              description: `Pemenang untuk grup ${group.name} telah dikosongkan.`,
+            });
+        }
     } catch (serverError) {
         const permissionError = new FirestorePermissionError({
             path: groupRef.path,
@@ -159,7 +167,7 @@ export function LotteryCard({ group, title, description }: LotteryCardProps) {
             </ScrollArea>
         </CardContent>
         <CardFooter className="pt-4">
-             <Button className="w-full" variant="secondary" onClick={() => handleSelectWinner({ id: '', name: 'Kosongkan Pemenang' } as Member)}>
+             <Button className="w-full" variant="secondary" onClick={() => handleSelectWinner({ id: '', name: 'Kosongkan Pemenang' } as Member)} disabled={isSaving}>
                 Kosongkan Pemenang Saat Ini
             </Button>
         </CardFooter>
@@ -167,4 +175,3 @@ export function LotteryCard({ group, title, description }: LotteryCardProps) {
     </>
   );
 }
-
