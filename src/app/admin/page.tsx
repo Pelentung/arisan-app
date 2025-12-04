@@ -122,6 +122,12 @@ export default function AdminPage() {
     const docRef = doc(db, "contributionSettings", "default");
     
     setDoc(docRef, settings, { merge: true })
+      .then(() => {
+        toast({
+            title: "Pengaturan Disimpan",
+            description: "Nominal iuran telah berhasil diperbarui.",
+        });
+      })
       .catch((serverError) => {
           const permissionError = new FirestorePermissionError({
               path: docRef.path,
