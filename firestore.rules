@@ -12,59 +12,42 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
-    function userIsAdmin(uid) {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(uid)).data.isAdmin == true;
-    }
-
     match /users/{userId} {
-      // Admins can read/write any user profile.
-      allow read, write: if userIsAdmin(request.auth.uid);
       // Users can create and update their own profile.
-      allow create, update: if isUser(userId);
-      // Non-admin users can read their own profile and list other profiles.
-      allow get, list: if isSignedIn() && !userIsAdmin(request.auth.uid);
+      // Admins can read/write any user profile.
+      allow read, write: if isUser(userId) || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+      // All signed-in users can list other user profiles (e.g., for selection dropdowns).
+      allow list: if isSignedIn();
     }
 
     match /groups/{groupId} {
-      // Admins have full access.
-      allow read, write: if userIsAdmin(request.auth.uid);
-      // Non-admins have read-only access.
-      allow get, list: if isSignedIn() && !userIsAdmin(request.auth.uid);
+      allow read, write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+      allow get, list: if isSignedIn();
     }
 
     match /members/{memberId} {
-      // Admins have full access.
-      allow read, write: if userIsAdmin(request.auth.uid);
-      // Non-admins have read-only access.
-      allow get, list: if isSignedIn() && !userIsAdmin(request.auth.uid);
+      allow read, write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+      allow get, list: if isSignedIn();
     }
 
     match /payments/{paymentId} {
-      // Admins have full access.
-      allow read, write: if userIsAdmin(request.auth.uid);
-      // Non-admins have read-only access.
-      allow get, list: if isSignedIn() && !userIsAdmin(request.auth.uid);
+      allow read, write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+      allow get, list: if isSignedIn();
     }
 
     match /expenses/{expenseId} {
-      // Admins have full access.
-      allow read, write: if userIsAdmin(request.auth.uid);
-      // Non-admins have read-only access.
-      allow get, list: if isSignedIn() && !userIsAdmin(request.auth.uid);
+      allow read, write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+      allow get, list: if isSignedIn();
     }
 
     match /contributionSettings/{settingId} {
-      // Admins have full access.
-      allow read, write: if userIsAdmin(request.auth.uid);
-      // Non-admins have read-only access.
-      allow get, list: if isSignedIn() && !userIsAdmin(request.auth.uid);
+      allow read, write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+      allow get, list: if isSignedIn();
     }
 
     match /notes/{noteId} {
-      // Admins have full access.
-      allow read, write: if userIsAdmin(request.auth.uid);
-       // Non-admins have read-only access.
-      allow get, list: if isSignedIn() && !userIsAdmin(request.auth.uid);
+      allow read, write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+      allow get, list: if isSignedIn();
     }
   }
 }
