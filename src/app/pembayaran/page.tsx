@@ -26,7 +26,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore } from '@/firebase';
 import { doc, writeBatch, collection, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -44,7 +44,7 @@ const formatCurrency = (amount: number) =>
   }).format(amount);
 
 // --- Detailed Table for Main Group ---
-const DetailedPaymentTable = ({ payments, onPaymentChange, contributionLabels, isReadOnly }: { payments: PaymentDetail[], onPaymentChange: (paymentId: string, contributionType: ContributionType, isPaid: boolean) => void, contributionLabels: Record<string, string>, isReadOnly: boolean }) => {
+const DetailedPaymentTable = ({ payments, onPaymentChange, contributionLabels }: { payments: PaymentDetail[], onPaymentChange: (paymentId: string, contributionType: ContributionType, isPaid: boolean) => void, contributionLabels: Record<string, string> }) => {
   const contributionKeys = Object.keys(contributionLabels);
   
   return (
@@ -86,7 +86,6 @@ const DetailedPaymentTable = ({ payments, onPaymentChange, contributionLabels, i
                                 checked={contribution.paid}
                                 onCheckedChange={checked => onPaymentChange(payment.id, type, !!checked)}
                                 aria-label={`Tandai ${contributionLabels[type]} untuk ${payment.member?.name} lunas`}
-                                disabled={isReadOnly}
                             />
                             <label htmlFor={`paid-${payment.id}-${type}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                                 {formatCurrency(contribution.amount)}
@@ -124,7 +123,7 @@ const DetailedPaymentTable = ({ payments, onPaymentChange, contributionLabels, i
 }
 
 // --- Simple Table for Other Groups ---
-const SimplePaymentTable = ({ payments, onStatusChange, isReadOnly }: { payments: PaymentDetail[], onStatusChange: (paymentId: string, newStatus: DetailedPayment['status']) => void, isReadOnly: boolean }) => {
+const SimplePaymentTable = ({ payments, onStatusChange }: { payments: PaymentDetail[], onStatusChange: (paymentId: string, newStatus: DetailedPayment['status']) => void }) => {
     return (
         <Table>
             <TableHeader>
@@ -151,7 +150,7 @@ const SimplePaymentTable = ({ payments, onStatusChange, isReadOnly }: { payments
                         </TableCell>
                         <TableCell>{new Date(payment.dueDate).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}</TableCell>
                         <TableCell>
-                          <Select value={payment.status} onValueChange={(value) => onStatusChange(payment.id, value as DetailedPayment['status'])} disabled={isReadOnly}>
+                          <Select value={payment.status} onValueChange={(value) => onStatusChange(payment.id, value as DetailedPayment['status'])}>
                             <SelectTrigger className="w-[120px]">
                                 <SelectValue/>
                             </SelectTrigger>
@@ -172,7 +171,6 @@ const SimplePaymentTable = ({ payments, onStatusChange, isReadOnly }: { payments
 export default function PaymentPage() {
   const { toast } = useToast();
   const db = useFirestore();
-  const { user } = useUser();
   const [allPayments, setAllPayments] = useState<DetailedPayment[]>([]);
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [allGroups, setAllGroups] = useState<Group[]>([]);
@@ -183,7 +181,6 @@ export default function PaymentPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const mainArisanGroup = useMemo(() => allGroups.find(g => g.name === 'Arisan Utama'), [allGroups]);
-  const isReadOnly = !user?.isAdmin;
 
   // Data fetching
   useEffect(() => {
@@ -291,12 +288,12 @@ export default function PaymentPage() {
         }
     };
     
-    // Run generation only when all data is loaded and user is admin
-    if(!isLoading && !isReadOnly) {
+    // Run generation only when all data is loaded
+    if(!isLoading) {
         generateMonthlyPayments();
     }
 
-  }, [isLoading, db, allGroups, allMembers, contributionSettings, mainArisanGroup, toast, isReadOnly]);
+  }, [isLoading, db, allGroups, allMembers, contributionSettings, mainArisanGroup, toast]);
 
 
   const contributionLabels = useMemo(() => {
@@ -480,7 +477,7 @@ export default function PaymentPage() {
                     ))}
                 </SelectContent>
                 </Select>
-                {!isReadOnly && <Button onClick={saveAllChanges} className="w-full sm:w-auto">Simpan Perubahan</Button>}
+                <Button onClick={saveAllChanges} className="w-full sm:w-auto">Simpan Perubahan</Button>
             </div>
           </CardHeader>
           <CardContent>
@@ -490,9 +487,9 @@ export default function PaymentPage() {
                 </div>
             ) : filteredPayments.length > 0 ? (
                 selectedGroup === mainArisanGroup.id ? (
-                    <DetailedPaymentTable payments={filteredPayments} onPaymentChange={handleDetailedPaymentChange} contributionLabels={contributionLabels} isReadOnly={isReadOnly} />
+                    <DetailedPaymentTable payments={filteredPayments} onPaymentChange={handleDetailedPaymentChange} contributionLabels={contributionLabels} />
                 ) : (
-                    <SimplePaymentTable payments={filteredPayments} onStatusChange={handleSimpleStatusChange} isReadOnly={isReadOnly} />
+                    <SimplePaymentTable payments={filteredPayments} onStatusChange={handleSimpleStatusChange} />
                 )
             ) : (
                 <div className="text-center text-muted-foreground py-8">

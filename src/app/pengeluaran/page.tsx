@@ -45,7 +45,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore } from '@/firebase';
 import { collection, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -162,7 +162,6 @@ const ExpenseDialog = ({
 export default function ExpensesPage() {
   const { toast } = useToast();
   const db = useFirestore();
-  const { user } = useUser();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<Partial<Expense> | null>(null);
@@ -236,8 +235,6 @@ export default function ExpensesPage() {
     }
   };
   
-  const isReadOnly = !user?.isAdmin;
-
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -258,12 +255,10 @@ export default function ExpensesPage() {
                         Catat semua pengeluaran yang terjadi dalam kegiatan arisan.
                     </CardDescription>
                 </div>
-                {!isReadOnly && (
-                    <Button onClick={handleAdd}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Tambah Pengeluaran
-                    </Button>
-                )}
+                <Button onClick={handleAdd}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Tambah Pengeluaran
+                </Button>
             </CardHeader>
             <CardContent>
               <Table>
@@ -273,7 +268,7 @@ export default function ExpensesPage() {
                     <TableHead>Deskripsi</TableHead>
                     <TableHead>Kategori</TableHead>
                     <TableHead>Jumlah</TableHead>
-                    {!isReadOnly && <TableHead className="text-right">Tindakan</TableHead>}
+                    <TableHead className="text-right">Tindakan</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -290,23 +285,21 @@ export default function ExpensesPage() {
                         }>{expense.category}</Badge>
                       </TableCell>
                        <TableCell>{formatCurrency(expense.amount)}</TableCell>
-                      {!isReadOnly && (
-                        <TableCell className="text-right">
-                            <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Tindakan</span>
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Tindakan</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => handleEdit(expense)}>Ubah</DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => handleDelete(expense.id)}>Hapus</DropdownMenuItem>
-                            </DropdownMenuContent>
-                            </DropdownMenu>
-                        </TableCell>
-                      )}
+                      <TableCell className="text-right">
+                          <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Tindakan</span>
+                              </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Tindakan</DropdownMenuLabel>
+                              <DropdownMenuItem onClick={() => handleEdit(expense)}>Ubah</DropdownMenuItem>
+                              <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => handleDelete(expense.id)}>Hapus</DropdownMenuItem>
+                          </DropdownMenuContent>
+                          </DropdownMenu>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -316,7 +309,7 @@ export default function ExpensesPage() {
         </main>
       </div>
       
-      {!isReadOnly && isDialogOpen && (
+      {isDialogOpen && (
         <ExpenseDialog
           expense={selectedExpense}
           isOpen={isDialogOpen}

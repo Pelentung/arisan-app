@@ -14,11 +14,10 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Users } from 'lucide-react';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore } from '@/firebase';
 
 export function GroupsList() {
   const db = useFirestore();
-  const { user } = useUser();
   const [groups, setGroups] = useState<Group[]>([]);
 
   useEffect(() => {
@@ -62,7 +61,7 @@ export function GroupsList() {
         <Button className="w-full" asChild variant="outline">
           <Link href="/grup">
             <Users className="mr-2 h-4 w-4" />
-            {user?.isAdmin ? 'Kelola Grup & Anggota' : 'Lihat Grup & Anggota'}
+            Kelola Grup & Anggota
           </Link>
         </Button>
       </CardFooter>

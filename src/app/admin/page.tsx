@@ -18,7 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Shield, PlusCircle, Trash2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { doc, setDoc, onSnapshot, Firestore } from 'firebase/firestore';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore } from '@/firebase';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
@@ -37,7 +37,6 @@ const parseCurrency = (value: string) => {
 export default function AdminPage() {
   const { toast } = useToast();
   const db = useFirestore();
-  const { user } = useUser();
   const [settings, setSettings] = useState<ContributionSettings | null>(null);
 
   useEffect(() => {
@@ -139,8 +138,6 @@ export default function AdminPage() {
       });
   };
 
-  const isReadOnly = !user?.isAdmin;
-
   const fixedContributions: {key: keyof Omit<ContributionSettings, 'others'>, label: string}[] = [
       { key: 'main', label: 'Iuran Utama' },
       { key: 'cash', label: 'Iuran Kas' },
@@ -178,7 +175,6 @@ export default function AdminPage() {
                         value={formatCurrency(settings[key] as number).replace('Rp', '').trim()} 
                         onChange={handleFixedChange}
                         className="col-span-2"
-                        readOnly={isReadOnly}
                     />
                     </div>
                 ))}
@@ -195,7 +191,6 @@ export default function AdminPage() {
                             value={other.description}
                             onChange={(e) => handleOtherChange(index, 'description', e.target.value)}
                             className="md:col-span-4"
-                            readOnly={isReadOnly}
                         />
                          <Input
                             type="text"
@@ -203,25 +198,18 @@ export default function AdminPage() {
                             value={formatCurrency(other.amount).replace('Rp', '').trim()}
                             onChange={(e) => handleOtherChange(index, 'amount', parseCurrency(e.target.value))}
                             className="md:col-span-3"
-                            readOnly={isReadOnly}
                         />
-                        {!isReadOnly && (
-                            <Button variant="ghost" size="icon" onClick={() => removeOtherContribution(index)} className="text-destructive hover:text-destructive-foreground hover:bg-destructive justify-self-end">
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                        )}
+                        <Button variant="ghost" size="icon" onClick={() => removeOtherContribution(index)} className="text-destructive hover:text-destructive-foreground hover:bg-destructive justify-self-end">
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
                     </div>
                 ))}
-                {!isReadOnly && (
-                    <Button variant="outline" onClick={addOtherContribution} className="w-full">
-                        <PlusCircle className="mr-2 h-4 w-4"/>
-                        Tambah Iuran Lainnya
-                    </Button>
-                )}
+                <Button variant="outline" onClick={addOtherContribution} className="w-full">
+                    <PlusCircle className="mr-2 h-4 w-4"/>
+                    Tambah Iuran Lainnya
+                </Button>
               </div>
-                {!isReadOnly && (
-                    <Button onClick={handleSave} className="w-full mt-6">Simpan Pengaturan</Button>
-                )}
+              <Button onClick={handleSave} className="w-full mt-6">Simpan Pengaturan</Button>
             </CardContent>
           </Card>
         </main>
