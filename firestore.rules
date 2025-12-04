@@ -4,74 +4,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-    
-    function isAdmin() {
-      // Check for the existence of the user document and the isAdmin field.
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
-    }
-
-    // Rules for users collection
-    match /users/{userId} {
-      // A new user can create their own profile. The first user is made admin client-side.
-      // Subsequent users cannot make themselves admin.
-      allow create: if isSignedIn() && isOwner(userId) && (request.resource.data.isAdmin == false || !('isAdmin' in request.resource.data));
-      // Users can read their own profile. Admins can read any profile.
-      allow read: if isSignedIn() && (isOwner(userId) || isAdmin());
-      // Users can update their own profile, but cannot change their admin status.
-      allow update: if isSignedIn() && isOwner(userId) && !('isAdmin' in request.resource.data);
-      // Admins can update any user profile, including admin status.
-      allow update: if isAdmin();
-      // Only admins can delete users.
-      allow delete: if isAdmin();
-    }
-    
-    // Admins have full access to all data collections
-    match /arisanData/{docId} {
-      allow read, write: if isAdmin();
-    }
-    match /members/{docId} {
-      allow read, write: if isAdmin();
-    }
-    match /groups/{docId} {
-      allow read, write: if isAdmin();
-    }
-    match /payments/{docId} {
-      allow read, write: if isAdmin();
-    }
-    match /expenses/{docId} {
-      allow read, write: if isAdmin();
-    }
-    match /notes/{docId} {
-      allow read, write: if isAdmin();
-    }
-    match /contributionSettings/{docId} {
-      allow read, write: if isAdmin();
-    }
-    
-    // Authenticated non-admin users have read-only access to data needed for reports.
-    match /members/{memberId} {
-        allow get, list: if isSignedIn();
-    }
-    match /groups/{groupId} {
-        allow get, list: if isSignedIn();
-    }
-    match /payments/{paymentId} {
-        allow get, list: if isSignedIn();
-    }
-     match /expenses/{expenseId} {
-        allow get, list: if isSignedIn();
-    }
-    match /contributionSettings/{settingId} {
-        allow get, list: if isSignedIn();
+    // Allow public read and write access to all documents.
+    // This is insecure and should only be used for initial development.
+    match /{document=**} {
+      allow read, write: if true;
     }
   }
 }
