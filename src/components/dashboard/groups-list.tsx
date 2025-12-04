@@ -42,16 +42,18 @@ export function GroupsList() {
                 {group.memberIds.length} anggota
               </p>
             </div>
-            <div className="text-right">
-                <p className="text-sm font-semibold">
-                {new Intl.NumberFormat('id-ID', {
-                    style: 'currency',
-                    currency: 'IDR',
-                    minimumFractionDigits: 0,
-                }).format(group.contributionAmount)}
-                </p>
-                <p className="text-xs text-muted-foreground capitalize">{group.cycle === 'monthly' ? 'Bulanan' : 'Mingguan'}</p>
-            </div>
+            {group.name !== 'Arisan Utama' && (
+                <div className="text-right">
+                    <p className="text-sm font-semibold">
+                    {new Intl.NumberFormat('id-ID', {
+                        style: 'currency',
+                        currency: 'IDR',
+                        minimumFractionDigits: 0,
+                    }).format(group.contributionAmount)}
+                    </p>
+                    <p className="text-xs text-muted-foreground capitalize">{group.cycle === 'monthly' ? 'Bulanan' : 'Mingguan'}</p>
+                </div>
+            )}
           </div>
         ))}
       </CardContent>
