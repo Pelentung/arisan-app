@@ -95,7 +95,9 @@ export const subscribeToData = (db: Firestore, collectionName: string, callback:
         callback(data);
     }, 
     (error) => {
-      console.error(`Error fetching ${collectionName}:`, error);
+      // Re-throwing the error to let it be caught by a global handler or the browser.
+      // This is often better for debugging during development.
+      throw error;
     });
     return unsubscribe;
 };
