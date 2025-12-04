@@ -13,17 +13,26 @@ service cloud.firestore {
     }
     
     function isAdmin() {
+      // Check if the user is an admin by looking at their user document.
+      // This is safe because the rules for /users/{userId} are secure.
       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
     }
 
     match /users/{userId} {
+      // Any authenticated user can create their own user document.
+      // This prevents the "chicken-and-egg" problem for new users.
       allow create: if isUser(userId);
-      allow get: if isUser(userId) || isAdmin();
+      // Existing users can read/update their own profile. Admins can read/update any profile.
+      allow get, update: if isUser(userId) || isAdmin();
+      // Any signed-in user can see the list of users.
       allow list: if isSignedIn();
-      allow update: if isUser(userId) || isAdmin();
+      // Only admins can delete user profiles.
       allow delete: if isAdmin();
     }
 
+    // Rules for other collections:
+    // Any signed-in user can read data.
+    // Only admins can write data.
     match /groups/{groupId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();

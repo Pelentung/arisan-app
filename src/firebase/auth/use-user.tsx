@@ -29,14 +29,15 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         setLoading(false);
         return;
     }
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setLoading(true);
+    
+    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         const userRef = doc(db, 'users', firebaseUser.uid);
         
-        // Always try to set/update user document on auth state change.
-        // This handles new user creation and keeps data fresh.
-        // Using { merge: true } is idempotent and safe.
+        // This is a more robust way to handle user profiles.
+        // It uses `setDoc` with `merge: true` to create or update the user document.
+        // This is idempotent and avoids race conditions where a read (`getDoc`) might fail
+        // before the document is created.
         const isAdminByEmail = firebaseUser.email === 'adminarisan@gmail.com';
         const userProfileData = {
             uid: firebaseUser.uid,
@@ -47,36 +48,36 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 
         try {
             // This will create the document if it doesn't exist, 
-            // or update it if it does. No need to check for existence first.
+            // or update it if it does. This solves the "chicken-and-egg" problem.
             await setDoc(userRef, userProfileData, { merge: true });
         } catch (error) {
             console.error("Error writing user profile:", error);
         }
 
-        const unsubSnapshot = onSnapshot(userRef, (docSnap) => {
+        // Now that we've ensured the document exists, we can safely listen for snapshots.
+        const unsubscribeSnapshot = onSnapshot(userRef, (docSnap) => {
           if (docSnap.exists()) {
-            const userData = docSnap.data();
-            setUser({ ...firebaseUser, ...userData });
+            setUser({ ...firebaseUser, ...docSnap.data() });
           } else {
-            // Fallback to the data we just tried to write if snapshot is slow
+             // Fallback in case snapshot is slow or fails after a write
             setUser({ ...firebaseUser, ...userProfileData });
           }
           setLoading(false);
         }, (error) => {
             console.error("Error in user snapshot listener:", error);
-            // Fallback to auth user if snapshot fails
-            setUser(firebaseUser); 
+            setUser({ ...firebaseUser, ...userProfileData }); // Fallback on listener error
             setLoading(false);
         });
 
-        return () => unsubSnapshot(); // Return snapshot listener cleanup
+        return () => unsubscribeSnapshot();
       } else {
+        // User is signed out
         setUser(null);
         setLoading(false);
       }
     });
 
-    return () => unsubscribe(); // Return auth state listener cleanup
+    return () => unsubscribeAuth();
   }, [auth, db]);
 
   const value: UserContextType = {
