@@ -1,11 +1,12 @@
 
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Coins,
   LayoutDashboard,
+  LogOut,
   Shield,
   Trophy,
   Users,
@@ -13,7 +14,7 @@ import {
   Wallet,
   StickyNote,
 } from 'lucide-react';
-
+import { initializeFirebase } from '@/firebase';
 import {
   SidebarHeader,
   SidebarMenu,
@@ -37,6 +38,13 @@ const navItems = [
 export function SidebarNav() {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
+  const router = useRouter();
+  const { auth } = initializeFirebase();
+
+  const handleSignOut = async () => {
+    await auth.signOut();
+    router.push('/');
+  };
 
   const isNavItemActive = (href: string) => {
     if (href === '/') return pathname === '/';
@@ -90,8 +98,16 @@ export function SidebarNav() {
                 </Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>
+            <SidebarMenuItem>
+                <SidebarMenuButton onClick={handleSignOut} tooltip="Keluar">
+                    <LogOut />
+                    <span>Keluar</span>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
     </>
   );
 }
+
+    

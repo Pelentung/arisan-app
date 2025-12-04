@@ -39,6 +39,8 @@ import { collection, addDoc, doc, updateDoc, deleteDoc, serverTimestamp, Firesto
 import { useFirestore } from '@/firebase';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { SidebarProvider, Sidebar, SidebarInset } from '@/components/ui/sidebar';
+import { SidebarNav } from '@/components/layout/sidebar-nav';
 
 const NoteDialog = ({
   note,
@@ -207,67 +209,74 @@ export default function NotesPage() {
   };
 
   return (
-    <>
-      <div className="flex flex-col min-h-screen">
-        <Header title="Catatan Penting" />
-        <main className="flex-1 p-4 md:p-6 space-y-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                    <CardTitle>Kelola Catatan</CardTitle>
-                    <CardDescription>
-                        Buat, ubah, dan hapus catatan penting terkait arisan.
-                    </CardDescription>
-                </div>
-                <Button onClick={handleAdd}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Tambah Catatan
-                </Button>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {notes.map((note) => (
-                  <Card key={note.id} className="flex flex-col">
-                    <CardHeader className="flex-row items-start justify-between gap-4">
+    <SidebarProvider>
+        <Sidebar>
+            <SidebarNav />
+        </Sidebar>
+        <SidebarInset>
+            <div className="flex flex-col min-h-screen">
+                <Header title="Catatan Penting" />
+                <main className="flex-1 p-4 md:p-6 space-y-6">
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between">
                         <div>
-                            <CardTitle className="text-lg">{note.title}</CardTitle>
+                            <CardTitle>Kelola Catatan</CardTitle>
                             <CardDescription>
-                                Terakhir diubah: {note.updatedAt ? format(new Date(note.updatedAt), "d MMM yyyy, HH:mm", { locale: id }) : 'N/A'}
+                                Buat, ubah, dan hapus catatan penting terkait arisan.
                             </CardDescription>
                         </div>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="-mt-2 -mr-2">
-                                <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Tindakan</span>
-                            </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Tindakan</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => handleEdit(note)}>Ubah</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => handleDelete(note.id)}>Hapus</DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        <Button onClick={handleAdd}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Tambah Catatan
+                        </Button>
                     </CardHeader>
-                    <CardContent className="flex-grow">
-                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">{note.content}</p>
+                    <CardContent>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {notes.map((note) => (
+                        <Card key={note.id} className="flex flex-col">
+                            <CardHeader className="flex-row items-start justify-between gap-4">
+                                <div>
+                                    <CardTitle className="text-lg">{note.title}</CardTitle>
+                                    <CardDescription>
+                                        Terakhir diubah: {note.updatedAt ? format(new Date(note.updatedAt), "d MMM yyyy, HH:mm", { locale: id }) : 'N/A'}
+                                    </CardDescription>
+                                </div>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="-mt-2 -mr-2">
+                                        <MoreHorizontal className="h-4 w-4" />
+                                        <span className="sr-only">Tindakan</span>
+                                    </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                    <DropdownMenuLabel>Tindakan</DropdownMenuLabel>
+                                    <DropdownMenuItem onClick={() => handleEdit(note)}>Ubah</DropdownMenuItem>
+                                    <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => handleDelete(note.id)}>Hapus</DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </CardHeader>
+                            <CardContent className="flex-grow">
+                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{note.content}</p>
+                            </CardContent>
+                        </Card>
+                        ))}
+                    </div>
                     </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </main>
-      </div>
-      
-      {isDialogOpen && (
-        <NoteDialog
-          note={selectedNote}
-          isOpen={isDialogOpen}
-          onClose={() => setIsDialogOpen(false)}
-          onSave={handleSave}
-        />
-      )}
-    </>
+                </Card>
+                </main>
+            </div>
+            
+            {isDialogOpen && (
+                <NoteDialog
+                note={selectedNote}
+                isOpen={isDialogOpen}
+                onClose={() => setIsDialogOpen(false)}
+                onSave={handleSave}
+                />
+            )}
+        </SidebarInset>
+    </SidebarProvider>
   );
 }
+
+    

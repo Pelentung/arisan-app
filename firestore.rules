@@ -3,10 +3,58 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow read/write access to all documents by default
-    // This is insecure for production but useful for development.
+    
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isAnonymous() {
+      return isSignedIn() && request.auth.token.firebase.sign_in_provider == 'anonymous';
+    }
+    
+    function isUser() {
+      return isSignedIn() && !isAnonymous();
+    }
+
+    // Default deny all
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
+    }
+
+    // Allow users to read all data, but only write their own user profile
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if request.auth.uid == userId;
+      allow update: if request.auth.uid == userId;
+    }
+
+    // Allow guests to read, but only users to write
+    match /groups/{groupId} {
+      allow read: if isSignedIn();
+      allow write: if isUser();
+    }
+    match /members/{memberId} {
+      allow read: if isSignedIn();
+      allow write: if isUser();
+    }
+    match /payments/{paymentId} {
+      allow read: if isSignedIn();
+      allow write: if isUser();
+    }
+    match /expenses/{expenseId} {
+      allow read: if isSignedIn();
+      allow write: if isUser();
+    }
+    match /notes/{noteId} {
+      allow read: if isSignedIn();
+      allow write: if isUser();
+    }
+    match /contributionSettings/{settingId} {
+        allow read: if isSignedIn();
+        allow write: if isUser();
     }
   }
 }
+
+    

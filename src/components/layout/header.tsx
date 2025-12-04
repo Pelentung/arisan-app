@@ -3,25 +3,28 @@
 
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
-import { Search, ArrowLeft } from 'lucide-react';
-import { usePathname } from 'next/navigation';
-import Link from 'next/link';
+import { Search } from 'lucide-react';
+import { getAuth, onAuthStateChanged, type User } from 'firebase/auth';
+import { initializeFirebase } from '@/firebase';
+import { useState, useEffect } from 'react';
 
 export function Header({ title }: { title: string }) {
-  const pathname = usePathname();
-  const isHomePage = pathname === '/';
+  const { auth } = initializeFirebase();
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
+  }, [auth]);
+
+  // Don't show sidebar trigger for anonymous users as they don't have a sidebar
+  const showSidebarTrigger = user && !user.isAnonymous;
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
-      <SidebarTrigger className="md:hidden" />
-      {!isHomePage && (
-        <Button asChild variant="default" size="icon" className="h-8 w-8">
-            <Link href="/">
-                <ArrowLeft className="h-4 w-4" />
-                <span className="sr-only">Kembali ke Menu Utama</span>
-            </Link>
-        </Button>
-      )}
+      {showSidebarTrigger && <SidebarTrigger className="md:hidden" />}
       <div className="w-full flex-1">
         <h1 className="font-headline text-lg font-semibold md:text-xl">
           {title}
@@ -36,3 +39,5 @@ export function Header({ title }: { title: string }) {
     </header>
   );
 }
+
+    

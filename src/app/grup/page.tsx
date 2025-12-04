@@ -54,6 +54,8 @@ import { collection, addDoc, doc, updateDoc, deleteDoc, arrayUnion, arrayRemove,
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Textarea } from '@/components/ui/textarea';
+import { SidebarProvider, Sidebar, SidebarInset } from '@/components/ui/sidebar';
+import { SidebarNav } from '@/components/layout/sidebar-nav';
 
 
 // Dialog for Adding/Editing a single member
@@ -508,158 +510,164 @@ export default function ManageGroupsAndMembersPage() {
   }
 
   return (
-    <>
-      <div className="flex flex-col min-h-screen">
-        <Header title="Kelola Grup & Anggota" />
-        <main className="flex-1 p-4 md:p-6">
-          <Tabs defaultValue="groups">
-            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-              <TabsList>
-                <TabsTrigger value="groups">
-                  <Users className="mr-2" />
-                  Kelola Keanggotaan Grup
-                </TabsTrigger>
-                <TabsTrigger value="members">
-                  <UserPlus className="mr-2" />
-                  Kelola Semua Anggota
-                </TabsTrigger>
-              </TabsList>
-              <div className='flex gap-2 flex-wrap'>
-                  <Button variant="outline" onClick={() => setIsAddToGroupDialogOpen(true)}>
-                      <Users className="mr-2 h-4 w-4" />
-                      Tambahkan Anggota ke Grup
-                  </Button>
-                  <Button onClick={handleAddMember}>
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Tambah Anggota Baru
-                  </Button>
-              </div>
-            </div>
+    <SidebarProvider>
+        <Sidebar>
+            <SidebarNav />
+        </Sidebar>
+        <SidebarInset>
+            <div className="flex flex-col min-h-screen">
+                <Header title="Kelola Grup & Anggota" />
+                <main className="flex-1 p-4 md:p-6">
+                <Tabs defaultValue="groups">
+                    <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                    <TabsList>
+                        <TabsTrigger value="groups">
+                        <Users className="mr-2" />
+                        Kelola Keanggotaan Grup
+                        </TabsTrigger>
+                        <TabsTrigger value="members">
+                        <UserPlus className="mr-2" />
+                        Kelola Semua Anggota
+                        </TabsTrigger>
+                    </TabsList>
+                    <div className='flex gap-2 flex-wrap'>
+                        <Button variant="outline" onClick={() => setIsAddToGroupDialogOpen(true)}>
+                            <Users className="mr-2 h-4 w-4" />
+                            Tambahkan Anggota ke Grup
+                        </Button>
+                        <Button onClick={handleAddMember}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Tambah Anggota Baru
+                        </Button>
+                    </div>
+                    </div>
 
-            <TabsContent value="groups">
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                {displayedGroups.map(group => {
-                  const groupMembers = members.filter(member =>
-                    group.memberIds.includes(member.id)
-                  );
-                  return (
-                    <Card key={group.id}>
-                      <CardHeader>
-                        <CardTitle>{group.name}</CardTitle>
+                    <TabsContent value="groups">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {displayedGroups.map(group => {
+                        const groupMembers = members.filter(member =>
+                            group.memberIds.includes(member.id)
+                        );
+                        return (
+                            <Card key={group.id}>
+                            <CardHeader>
+                                <CardTitle>{group.name}</CardTitle>
+                                <CardDescription>
+                                Total {group.memberIds.length} anggota terdaftar.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-2">
+                                {groupMembers.map(member => (
+                                <div
+                                    key={member.id}
+                                    className="flex items-center justify-between rounded-md border p-2"
+                                >
+                                    <div className="flex items-center gap-3">
+                                    <Avatar className="h-8 w-8">
+                                        <AvatarImage
+                                        src={member.avatarUrl}
+                                        data-ai-hint={member.avatarHint}
+                                        />
+                                        <AvatarFallback>
+                                        {member.name.charAt(0)}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <span className="font-medium text-sm">{member.name}</span>
+                                    </div>
+                                    <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-destructive hover:text-destructive h-8 w-8"
+                                    onClick={() => handleRemoveFromGroup(group.id, member.id)}
+                                    >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                    <span className="sr-only">Hapus dari grup</span>
+                                    </Button>
+                                </div>
+                                ))}
+                                {groupMembers.length === 0 && (
+                                    <p className="text-sm text-muted-foreground text-center py-4">Belum ada anggota.</p>
+                                )}
+                            </CardContent>
+                            </Card>
+                        );
+                        })}
+                    </div>
+                    </TabsContent>
+
+                    <TabsContent value="members">
+                    <Card>
+                        <CardHeader>
+                        <CardTitle>Daftar Semua Anggota</CardTitle>
                         <CardDescription>
-                          Total {group.memberIds.length} anggota terdaftar.
+                            Kelola semua anggota yang terdaftar dalam sistem arisan.
                         </CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-2">
-                        {groupMembers.map(member => (
-                          <div
-                            key={member.id}
-                            className="flex items-center justify-between rounded-md border p-2"
-                          >
-                            <div className="flex items-center gap-3">
-                              <Avatar className="h-8 w-8">
-                                <AvatarImage
-                                  src={member.avatarUrl}
-                                  data-ai-hint={member.avatarHint}
-                                />
-                                <AvatarFallback>
-                                  {member.name.charAt(0)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span className="font-medium text-sm">{member.name}</span>
-                            </div>
-                            <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive h-8 w-8"
-                            onClick={() => handleRemoveFromGroup(group.id, member.id)}
-                            >
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Hapus dari grup</span>
-                            </Button>
-                          </div>
-                        ))}
-                         {groupMembers.length === 0 && (
-                            <p className="text-sm text-muted-foreground text-center py-4">Belum ada anggota.</p>
-                        )}
-                      </CardContent>
+                        </CardHeader>
+                        <CardContent>
+                        <Table>
+                            <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-[250px]">Anggota</TableHead>
+                                <TableHead>Alamat</TableHead>
+                                <TableHead>Nomor HP</TableHead>
+                                <TableHead className="text-right">Tindakan</TableHead>
+                            </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                            {members.map(member => (
+                                <TableRow key={member.id}>
+                                <TableCell>
+                                    <div className="flex items-center gap-3">
+                                    <Avatar className="h-9 w-9">
+                                        <AvatarImage
+                                        src={member.avatarUrl}
+                                        data-ai-hint={member.avatarHint}
+                                        />
+                                        <AvatarFallback>
+                                        {member.name.charAt(0)}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <div className="font-medium">{member.name}</div>
+                                    </div>
+                                </TableCell>
+                                <TableCell className="max-w-[300px] truncate">{member.address}</TableCell>
+                                <TableCell>{member.phone}</TableCell>
+                                <TableCell className="text-right">
+                                    <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon">
+                                        <MoreHorizontal className="h-4 w-4" />
+                                        <span className="sr-only">Tindakan</span>
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuLabel>Tindakan</DropdownMenuLabel>
+                                        <DropdownMenuItem
+                                        onClick={() => handleEditMember(member)}
+                                        >
+                                        Ubah
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                        className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                        onClick={() => handleDeleteMember(member.id)}
+                                        >
+                                        Hapus
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </TableCell>
+                                </TableRow>
+                            ))}
+                            </TableBody>
+                        </Table>
+                        </CardContent>
                     </Card>
-                  );
-                })}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="members">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Daftar Semua Anggota</CardTitle>
-                  <CardDescription>
-                    Kelola semua anggota yang terdaftar dalam sistem arisan.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[250px]">Anggota</TableHead>
-                        <TableHead>Alamat</TableHead>
-                        <TableHead>Nomor HP</TableHead>
-                        <TableHead className="text-right">Tindakan</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {members.map(member => (
-                        <TableRow key={member.id}>
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <Avatar className="h-9 w-9">
-                                <AvatarImage
-                                  src={member.avatarUrl}
-                                  data-ai-hint={member.avatarHint}
-                                />
-                                <AvatarFallback>
-                                  {member.name.charAt(0)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="font-medium">{member.name}</div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="max-w-[300px] truncate">{member.address}</TableCell>
-                          <TableCell>{member.phone}</TableCell>
-                          <TableCell className="text-right">
-                              <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                  <span className="sr-only">Tindakan</span>
-                                  </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                  <DropdownMenuLabel>Tindakan</DropdownMenuLabel>
-                                  <DropdownMenuItem
-                                  onClick={() => handleEditMember(member)}
-                                  >
-                                  Ubah
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                  className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                                  onClick={() => handleDeleteMember(member.id)}
-                                  >
-                                  Hapus
-                                  </DropdownMenuItem>
-                              </DropdownMenuContent>
-                              </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </main>
-      </div>
+                    </TabsContent>
+                </Tabs>
+                </main>
+            </div>
+        </SidebarInset>
+      
 
       {isMemberDialogOpen && (
         <MemberDialog
@@ -679,6 +687,8 @@ export default function ManageGroupsAndMembersPage() {
             onAdd={handleAddMemberToGroup}
         />
        )}
-    </>
+    </SidebarProvider>
   );
 }
+
+    
