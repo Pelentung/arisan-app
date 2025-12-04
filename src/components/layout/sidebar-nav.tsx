@@ -1,7 +1,7 @@
 
 'use client';
 
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
   Coins,
@@ -10,13 +10,9 @@ import {
   Trophy,
   Users,
   FileText,
-  Receipt,
-  StickyNote,
   Wallet,
-  LogOut,
+  StickyNote,
 } from 'lucide-react';
-import { useAuth } from '@/firebase';
-import { useUser } from '@/firebase/auth/use-user';
 
 import {
   SidebarHeader,
@@ -28,39 +24,23 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { Separator } from '../ui/separator';
-import { Button } from '../ui/button';
 
-const allNavItems = [
-  { href: '/', label: 'Menu Utama', icon: LayoutDashboard, adminOnly: false },
-  { href: '/laporan', label: 'Laporan', icon: FileText, adminOnly: false },
-  { href: '/keuangan', label: 'Pengelolaan Keuangan', icon: Wallet, adminOnly: true },
-  { href: '/grup', label: 'Kelola Grup & Anggota', icon: Users, adminOnly: true },
-  { href: '/undian', label: 'Yang Sudah Narik', icon: Trophy, adminOnly: true },
-  { href: '/catatan', label: 'Catatan', icon: StickyNote, adminOnly: true },
+const navItems = [
+  { href: '/', label: 'Menu Utama', icon: LayoutDashboard },
+  { href: '/laporan', label: 'Laporan', icon: FileText },
+  { href: '/keuangan', label: 'Pengelolaan Keuangan', icon: Wallet },
+  { href: '/grup', label: 'Kelola Grup & Anggota', icon: Users },
+  { href: '/undian', label: 'Yang Sudah Narik', icon: Trophy },
+  { href: '/catatan', label: 'Catatan', icon: StickyNote },
 ];
 
 export function SidebarNav() {
   const pathname = usePathname();
-  const router = useRouter();
   const { setOpenMobile } = useSidebar();
-  const auth = useAuth();
-  const { user } = useUser();
-
-  if (!user) {
-    return null; // Do not render sidebar if user is not logged in
-  }
-
-  const navItems = allNavItems.filter(item => !item.adminOnly || user?.isAdmin);
 
   const isNavItemActive = (href: string) => {
     if (href === '/') return pathname === '/';
-    if (href === '/grup') return pathname === '/grup';
     return pathname.startsWith(href);
-  };
-
-  const handleSignOut = async () => {
-    await auth.signOut();
-    router.push('/');
   };
 
   return (
@@ -96,8 +76,7 @@ export function SidebarNav() {
       </SidebarContent>
       <SidebarFooter className="p-2">
         <Separator className="my-2" />
-        {user?.isAdmin && (
-            <SidebarMenu>
+        <SidebarMenu>
             <SidebarMenuItem>
                 <SidebarMenuButton
                 asChild
@@ -111,12 +90,7 @@ export function SidebarNav() {
                 </Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>
-            </SidebarMenu>
-        )}
-        <Button variant="ghost" className="w-full justify-start" onClick={handleSignOut}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Keluar
-        </Button>
+        </SidebarMenu>
       </SidebarFooter>
     </>
   );

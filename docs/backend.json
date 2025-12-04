@@ -333,9 +333,7 @@
     }
   },
   "auth": {
-    "providers": [
-      "password"
-    ]
+    "providers": []
   },
   "firestore": {
     "/arisanData/{arisanDataId}": {

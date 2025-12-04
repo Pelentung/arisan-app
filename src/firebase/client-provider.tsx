@@ -1,23 +1,33 @@
 'use client';
 
-import React from 'react';
-import { initializeFirebase } from '.';
-import { FirebaseProvider } from './provider';
+import { useState, useEffect, type ReactNode } from 'react';
+import { initializeFirebase, FirebaseProvider } from '@/firebase';
+import type { FirebaseContextType } from '@/firebase/provider';
 
-// This provider ensures that Firebase is initialized only on the client side.
-// It wraps the main FirebaseProvider and passes the initialized services (app, auth, db) down the component tree.
-export const FirebaseClientProvider: React.FC<{
-  children: React.ReactNode;
-}> = ({ children }) => {
-  const { firebaseApp, auth, db } = initializeFirebase();
+export function FirebaseClientProvider({ children }: { children: ReactNode }) {
+  const [firebaseContext, setFirebaseContext] =
+    useState<FirebaseContextType | null>(null);
+
+  useEffect(() => {
+    const { firebaseApp, auth, db } = initializeFirebase();
+    setFirebaseContext({ firebaseApp, auth, db });
+  }, []);
+
+  if (!firebaseContext) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Loading Firebase...</p>
+      </div>
+    );
+  }
 
   return (
     <FirebaseProvider
-      firebaseApp={firebaseApp}
-      auth={auth}
-      db={db}
+      firebaseApp={firebaseContext.firebaseApp}
+      auth={firebaseContext.auth}
+      db={firebaseContext.db}
     >
       {children}
     </FirebaseProvider>
   );
-};
+}
