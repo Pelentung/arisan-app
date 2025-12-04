@@ -32,17 +32,15 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     }
     
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
-      let userDocSnapshotUnsubscribe = () => {};
+      let userDocSnapshotUnsubscribe: () => void = () => {};
 
       if (firebaseUser) {
         const userRef = doc(db, 'users', firebaseUser.uid);
         
-        // This listener will handle both initial load and subsequent updates to user data
         userDocSnapshotUnsubscribe = onSnapshot(userRef, (docSnap) => {
           if (docSnap.exists()) {
             setUser({ ...firebaseUser, ...docSnap.data() });
           } else {
-            // Document doesn't exist, so create it. This typically happens on first sign-up.
             const isAdminByEmail = firebaseUser.email === 'adminarisan@gmail.com';
             const userProfileData = {
                 uid: firebaseUser.uid,
@@ -53,14 +51,12 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
             setDoc(userRef, userProfileData, { merge: true }).catch(error => {
                 console.error("Error creating user document:", error);
             });
-            // We set the user state immediately with the data we have
             setUser({ ...firebaseUser, ...userProfileData });
           }
           setLoading(false);
         }, (error) => {
             console.error("Error in user snapshot listener:", error);
-            // Fallback: set user data without Firestore profile if snapshot fails
-            setUser(firebaseUser);
+            setUser(firebaseUser); // Fallback to auth user data
             setLoading(false);
         });
 
@@ -71,13 +67,14 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         setLoading(false);
       }
       
-      // Cleanup the user document snapshot listener when auth state changes or on unmount
+      // Return a cleanup function for the user document snapshot listener.
+      // This will be called when auth state changes or on component unmount.
       return () => {
         userDocSnapshotUnsubscribe();
       };
     });
 
-    // Cleanup auth state listener on component unmount
+    // Return a cleanup function for the main auth state listener.
     return () => unsubscribeAuth();
   }, [auth, db]);
 
