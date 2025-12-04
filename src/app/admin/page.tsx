@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useState } from 'react';
-import { arisanData, type ContributionSettings, type OtherContribution } from '@/app/data';
+import { useState, useEffect } from 'react';
+import { ContributionSettings, OtherContribution } from '@/app/data';
 import { Header } from '@/components/layout/header';
 import {
   Card,
@@ -17,6 +17,8 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Shield, PlusCircle, Trash2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { db } from '@/firebase/config';
 
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat('id-ID', {
@@ -32,17 +34,52 @@ const parseCurrency = (value: string) => {
 
 export default function AdminPage() {
   const { toast } = useToast();
-  const [settings, setSettings] = useState<ContributionSettings>(arisanData.contributionSettings);
+  const [settings, setSettings] = useState<ContributionSettings | null>(null);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      if (db) {
+        const docRef = doc(db, 'contributionSettings', 'default');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          setSettings(docSnap.data() as ContributionSettings);
+        } else {
+          // Initialize with default if not exists
+          setSettings({
+            main: 50000,
+            cash: 10000,
+            sick: 5000,
+            bereavement: 5000,
+            others: [{ id: 'other1', description: 'Iuran Lainnya', amount: 0 }],
+          });
+        }
+      }
+    };
+    fetchSettings();
+  }, []);
+
+  if (!settings) {
+    return (
+        <div className="flex flex-col min-h-screen">
+          <Header title="Halaman Admin" />
+          <main className="flex-1 p-4 md:p-6 flex items-center justify-center">
+            <p>Loading settings...</p>
+          </main>
+        </div>
+      );
+  }
+
 
   const handleFixedChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
-    setSettings(prev => ({
+    setSettings(prev => prev ? ({
         ...prev,
         [id]: parseCurrency(value)
-    }));
+    }) : null);
   };
 
   const handleOtherChange = (index: number, field: 'description' | 'amount', value: string | number) => {
+    if (!settings) return;
     const newOthers = [...settings.others];
     const item = newOthers[index];
     if (field === 'description' && typeof value === 'string') {
@@ -50,16 +87,17 @@ export default function AdminPage() {
     } else if (field === 'amount' && typeof value === 'number') {
         item.amount = value;
     }
-    setSettings(prev => ({...prev, others: newOthers}));
+    setSettings(prev => prev ? ({...prev, others: newOthers}) : null);
   }
 
   const addOtherContribution = () => {
+    if (!settings) return;
     const newOther = { id: `other${Date.now()}`, description: '', amount: 0 };
-    setSettings(prev => ({...prev, others: [...prev.others, newOther]}));
+    setSettings(prev => prev ? ({...prev, others: [...prev.others, newOther]}) : null);
   }
 
   const removeOtherContribution = (index: number) => {
-    if (settings.others.length <= 1) {
+    if (!settings || settings.others.length <= 1) {
         toast({
             title: "Tidak bisa menghapus",
             description: "Setidaknya harus ada satu iuran lainnya.",
@@ -68,19 +106,28 @@ export default function AdminPage() {
         return;
     }
     const newOthers = settings.others.filter((_, i) => i !== index);
-    setSettings(prev => ({...prev, others: newOthers}));
+    setSettings(prev => prev ? ({...prev, others: newOthers}) : null);
   }
 
-  const handleSave = () => {
-    // In a real app, this would be saved to a database.
-    arisanData.contributionSettings = settings;
-    toast({
-        title: "Pengaturan Disimpan",
-        description: "Nominal iuran telah berhasil diperbarui."
-    })
+  const handleSave = async () => {
+    if (!db || !settings) return;
+    try {
+        await setDoc(doc(db, "contributionSettings", "default"), settings);
+        toast({
+            title: "Pengaturan Disimpan",
+            description: "Nominal iuran telah berhasil diperbarui di Firestore."
+        })
+    } catch (error) {
+        console.error("Error saving settings: ", error);
+        toast({
+            title: "Gagal Menyimpan",
+            description: "Terjadi kesalahan saat menyimpan pengaturan.",
+            variant: "destructive"
+        })
+    }
   };
 
-  const fixedContributions: {key: keyof ContributionSettings, label: string}[] = [
+  const fixedContributions: {key: keyof Omit<ContributionSettings, 'others'>, label: string}[] = [
       { key: 'main', label: 'Iuran Utama' },
       { key: 'cash', label: 'Iuran Kas' },
       { key: 'sick', label: 'Iuran Sakit' },

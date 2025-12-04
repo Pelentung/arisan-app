@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { arisanData, type Note } from '@/app/data';
+import { useState, useEffect } from 'react';
+import { Note, subscribeToData } from '@/app/data';
 import { Header } from '@/components/layout/header';
 import {
   Card,
@@ -33,6 +33,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
+import { db } from '@/firebase/config';
+import { collection, addDoc, doc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 
 const NoteDialog = ({
   note,
@@ -43,12 +45,12 @@ const NoteDialog = ({
   note: Partial<Note> | null;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (note: Note) => void;
+  onSave: (note: Omit<Note, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }) => void;
 }) => {
   const [formData, setFormData] = useState<Partial<Note> | null>(note);
   const { toast } = useToast();
 
-  React.useEffect(() => {
+  useEffect(() => {
     setFormData(note);
   }, [note]);
 
@@ -67,15 +69,11 @@ const NoteDialog = ({
       return;
     }
     
-    const now = new Date().toISOString();
-    const newNote: Note = {
-      id: formData.id || `n${arisanData.notes.length + 1}`,
-      title: formData.title,
-      content: formData.content,
-      createdAt: formData.createdAt || now,
-      updatedAt: now,
-    };
-    onSave(newNote);
+    onSave({
+        id: formData.id,
+        title: formData.title,
+        content: formData.content,
+    });
   };
 
   return (
@@ -115,9 +113,16 @@ const NoteDialog = ({
 
 export default function NotesPage() {
   const { toast } = useToast();
-  const [notes, setNotes] = useState<Note[]>(arisanData.notes);
+  const [notes, setNotes] = useState<Note[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedNote, setSelectedNote] = useState<Partial<Note> | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToData('notes', (data) => {
+        setNotes(data as Note[]);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const handleAdd = () => {
     setSelectedNote({});
@@ -129,25 +134,54 @@ export default function NotesPage() {
     setIsDialogOpen(true);
   };
   
-  const handleDelete = (noteId: string) => {
-    setNotes(prev => prev.filter(n => n.id !== noteId));
-    toast({
-        title: "Catatan Dihapus",
-        description: "Catatan telah berhasil dihapus.",
-    });
+  const handleDelete = async (noteId: string) => {
+    if (!db) return;
+    try {
+        await deleteDoc(doc(db, "notes", noteId));
+        toast({
+            title: "Catatan Dihapus",
+            description: "Catatan telah berhasil dihapus.",
+        });
+    } catch (error) {
+        console.error("Error deleting note: ", error);
+        toast({
+            title: "Gagal Menghapus",
+            description: "Terjadi kesalahan saat menghapus catatan.",
+            variant: "destructive",
+        });
+    }
   };
 
-  const handleSave = (note: Note) => {
-    const isNew = !note.id.startsWith('n') || !notes.some(n => n.id === note.id);
-    if (isNew) {
-        const newNote = { ...note, id: `n${Math.random()}`}; 
-        setNotes(prev => [newNote, ...prev]);
-        toast({ title: "Catatan Ditambahkan", description: "Catatan baru telah disimpan." });
-    } else {
-        setNotes(prev => prev.map(n => n.id === note.id ? note : n));
-        toast({ title: "Catatan Diperbarui", description: "Catatan telah diperbarui." });
+  const handleSave = async (note: Omit<Note, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }) => {
+    if (!db) return;
+    const { id, ...noteData } = note;
+    try {
+        if (id) {
+            // Update existing note
+            const noteRef = doc(db, "notes", id);
+            await updateDoc(noteRef, {
+                ...noteData,
+                updatedAt: serverTimestamp()
+            });
+            toast({ title: "Catatan Diperbarui", description: "Catatan telah diperbarui." });
+        } else {
+            // Add new note
+            await addDoc(collection(db, "notes"), {
+                ...noteData,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            });
+            toast({ title: "Catatan Ditambahkan", description: "Catatan baru telah disimpan." });
+        }
+        setIsDialogOpen(false);
+    } catch (error) {
+        console.error("Error saving note: ", error);
+        toast({
+            title: "Gagal Menyimpan",
+            description: "Terjadi kesalahan saat menyimpan catatan.",
+            variant: "destructive",
+        });
     }
-    setIsDialogOpen(false);
   };
 
   return (
@@ -176,7 +210,7 @@ export default function NotesPage() {
                         <div>
                             <CardTitle className="text-lg">{note.title}</CardTitle>
                             <CardDescription>
-                                Terakhir diubah: {format(new Date(note.updatedAt), "d MMM yyyy, HH:mm", { locale: id })}
+                                Terakhir diubah: {note.updatedAt ? format(new Date(note.updatedAt), "d MMM yyyy, HH:mm", { locale: id }) : 'N/A'}
                             </CardDescription>
                         </div>
                         <DropdownMenu>

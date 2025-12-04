@@ -1,0 +1,379 @@
+{
+  "entities": {
+    "arisanData": {
+      "title": "Arisan Data",
+      "description": "Represents the entire data structure for the Arisan application, including members, groups, payments, expenses, notes, and contribution settings.",
+      "type": "object",
+      "properties": {
+        "members": {
+          "type": "array",
+          "description": "List of all arisan members.",
+          "items": {
+            "$ref": "#/entities/member"
+          }
+        },
+        "groups": {
+          "type": "array",
+          "description": "List of all arisan groups.",
+          "items": {
+            "$ref": "#/entities/group"
+          }
+        },
+        "payments": {
+          "type": "array",
+          "description": "List of all detailed payment records.",
+          "items": {
+            "$ref": "#/entities/detailedPayment"
+          }
+        },
+        "expenses": {
+          "type": "array",
+          "description": "List of all expense records.",
+          "items": {
+            "$ref": "#/entities/expense"
+          }
+        },
+        "notes": {
+          "type": "array",
+          "description": "List of all notes.",
+          "items": {
+            "$ref": "#/entities/note"
+          }
+        },
+        "contributionSettings": {
+          "$ref": "#/entities/contributionSettings"
+        }
+      },
+      "required": [
+        "members",
+        "groups",
+        "payments",
+        "expenses",
+        "notes",
+        "contributionSettings"
+      ]
+    },
+    "member": {
+      "title": "Member",
+      "description": "An arisan member.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The member's name."
+        },
+        "address": {
+          "type": "string",
+          "description": "The member's address."
+        },
+        "phone": {
+          "type": "string",
+          "description": "The member's phone number."
+        },
+        "avatarUrl": {
+          "type": "string",
+          "description": "URL for the member's avatar image."
+        },
+        "avatarHint": {
+          "type": "string",
+          "description": "Hint for AI image generation."
+        },
+        "joinedDate": {
+          "type": "string",
+          "format": "date",
+          "description": "The date the member joined."
+        },
+        "paymentHistory": {
+          "type": "array",
+          "description": "History of payments.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "type": "string",
+                "format": "date"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "Paid",
+                  "Unpaid"
+                ]
+              }
+            }
+          }
+        },
+        "communicationPreferences": {
+          "type": "object",
+          "properties": {
+            "channel": {
+              "type": "string",
+              "enum": [
+                "email",
+                "SMS",
+                "WhatsApp"
+              ]
+            },
+            "preferredTime": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "name",
+        "avatarUrl",
+        "avatarHint",
+        "joinedDate"
+      ]
+    },
+    "group": {
+      "title": "Group",
+      "description": "An arisan group.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "contributionAmount": {
+          "type": "number"
+        },
+        "cycle": {
+          "type": "string",
+          "enum": [
+            "monthly",
+            "weekly"
+          ]
+        },
+        "memberIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "currentWinnerId": {
+          "type": "string"
+        },
+        "winnerHistory": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "month": {
+                "type": "string"
+              },
+              "memberId": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "name",
+        "contributionAmount",
+        "cycle",
+        "memberIds"
+      ]
+    },
+    "detailedPayment": {
+      "title": "Detailed Payment",
+      "description": "A detailed payment record for a member in a group.",
+      "type": "object",
+      "properties": {
+        "memberId": {
+          "type": "string"
+        },
+        "groupId": {
+          "type": "string"
+        },
+        "dueDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "contributions": {
+          "type": "object",
+          "patternProperties": {
+            ".*": {
+              "type": "object",
+              "properties": {
+                "amount": {
+                  "type": "number"
+                },
+                "paid": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        },
+        "totalAmount": {
+          "type": "number"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "Paid",
+            "Unpaid"
+          ]
+        }
+      },
+      "required": [
+        "memberId",
+        "groupId",
+        "dueDate",
+        "contributions",
+        "totalAmount",
+        "status"
+      ]
+    },
+    "expense": {
+      "title": "Expense",
+      "description": "An expense record.",
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "description": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "number"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Sakit",
+            "Kemalangan",
+            "Lainnya"
+          ]
+        }
+      },
+      "required": [
+        "date",
+        "description",
+        "amount",
+        "category"
+      ]
+    },
+    "note": {
+      "title": "Note",
+      "description": "A note.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "title",
+        "content",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "contributionSettings": {
+      "title": "Contribution Settings",
+      "description": "Settings for contribution amounts.",
+      "type": "object",
+      "properties": {
+        "main": {
+          "type": "number"
+        },
+        "cash": {
+          "type": "number"
+        },
+        "sick": {
+          "type": "number"
+        },
+        "bereavement": {
+          "type": "number"
+        },
+        "others": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "amount": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "main",
+        "cash",
+        "sick",
+        "bereavement",
+        "others"
+      ]
+    }
+  },
+  "auth": {
+    "providers": []
+  },
+  "firestore": {
+    "/arisanData/{arisanDataId}": {
+      "schema": {
+        "$ref": "#/entities/arisanData"
+      },
+      "description": "Stores the entire arisan data structure."
+    },
+    "/members/{memberId}": {
+      "schema": {
+        "$ref": "#/entities/member"
+      },
+      "description": "Stores individual member profiles."
+    },
+    "/groups/{groupId}": {
+      "schema": {
+        "$ref": "#/entities/group"
+      },
+      "description": "Stores arisan group information."
+    },
+    "/payments/{paymentId}": {
+      "schema": {
+        "$ref": "#/entities/detailedPayment"
+      },
+      "description": "Stores detailed payment records."
+    },
+    "/expenses/{expenseId}": {
+      "schema": {
+        "$ref": "#/entities/expense"
+      },
+      "description": "Stores expense records."
+    },
+    "/notes/{noteId}": {
+      "schema": {
+        "$ref": "#/entities/note"
+      },
+      "description": "Stores notes."
+    },
+    "/contributionSettings/{settingId}": {
+      "schema": {
+        "$ref": "#/entities/contributionSettings"
+      },
+      "description": "Stores contribution settings."
+    }
+  }
+}
