@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Group, Member } from '@/app/data';
 import { subscribeToData } from '@/app/data';
 import { Header } from '@/components/layout/header';
@@ -55,6 +55,8 @@ import { useFirestore } from '@/firebase';
 import { collection, addDoc, doc, updateDoc, deleteDoc, arrayUnion, arrayRemove, writeBatch } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { Textarea } from '@/components/ui/textarea';
+
 
 // Dialog for Adding/Editing a single member
 const MemberDialog = ({
@@ -68,23 +70,45 @@ const MemberDialog = ({
   onClose: () => void;
   onSave: (member: Omit<Member, 'id'>, id?: string) => void;
 }) => {
-  const [formData, setFormData] = useState<Partial<Member> | null>(member);
+  const [formData, setFormData] = useState<Partial<Member> | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    setFormData(member);
+    if (member) {
+        setFormData(member);
+        if (member.avatarUrl) {
+            setPhotoPreview(member.avatarUrl);
+        } else {
+            setPhotoPreview(null);
+        }
+    }
   }, [member]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
     setFormData(prev => ({ ...prev, [id]: value }));
   };
 
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        setPhotoPreview(result);
+        setFormData(prev => ({ ...prev, avatarUrl: result }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSave = () => {
-    if (!formData?.name || !formData?.joinedDate) {
+    if (!formData?.name) {
       toast({
         title: 'Data Tidak Lengkap',
-        description: 'Nama dan tanggal bergabung harus diisi.',
+        description: 'Nama harus diisi.',
         variant: 'destructive',
       });
       return;
@@ -92,7 +116,9 @@ const MemberDialog = ({
 
     const newMemberData: Omit<Member, 'id'> = {
       name: formData.name,
-      joinedDate: formData.joinedDate,
+      address: formData.address || '',
+      phone: formData.phone || '',
+      joinedDate: formData.joinedDate || new Date().toISOString().split('T')[0],
       avatarUrl:
         formData.avatarUrl ||
         `https://picsum.photos/seed/${formData.name}/100/100`,
@@ -120,6 +146,24 @@ const MemberDialog = ({
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Foto</Label>
+              <div className="col-span-3 flex items-center gap-4">
+                  <Avatar className="h-16 w-16">
+                      <AvatarImage src={photoPreview || ''} />
+                      <AvatarFallback>{formData?.name?.charAt(0) || '?'}</AvatarFallback>
+                  </Avatar>
+                  <Input 
+                      type="file" 
+                      id="photo"
+                      accept="image/*"
+                      ref={photoInputRef}
+                      onChange={handlePhotoChange}
+                      className="hidden" 
+                  />
+                  <Button variant="outline" onClick={() => photoInputRef.current?.click()}>Unggah Foto</Button>
+              </div>
+            </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="name" className="text-right">
               Nama
@@ -131,14 +175,25 @@ const MemberDialog = ({
               className="col-span-3"
             />
           </div>
+          <div className="grid grid-cols-4 items-start gap-4">
+            <Label htmlFor="address" className="text-right pt-2">
+              Alamat
+            </Label>
+            <Textarea
+              id="address"
+              value={formData?.address || ''}
+              onChange={handleChange}
+              className="col-span-3"
+            />
+          </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="joinedDate" className="text-right">
-              Tgl. Bergabung
+            <Label htmlFor="phone" className="text-right">
+              Nomor HP
             </Label>
             <Input
-              id="joinedDate"
-              type="date"
-              value={formData?.joinedDate || ''}
+              id="phone"
+              type="tel"
+              value={formData?.phone || ''}
               onChange={handleChange}
               className="col-span-3"
             />
@@ -326,7 +381,7 @@ export default function ManageGroupsAndMembersPage() {
     if (!db) return;
     if (id) {
         const memberRef = doc(db, 'members', id);
-        updateDoc(memberRef, memberData)
+        updateDoc(memberRef, memberData as any)
             .then(() => {
                 toast({
                     title: 'Anggota Diperbarui',
@@ -584,3 +639,5 @@ export default function ManageGroupsAndMembersPage() {
     </>
   );
 }
+
+    
