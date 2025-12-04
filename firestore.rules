@@ -3,11 +3,56 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Allow public read and write access to all documents.
-    // This is insecure and should only be used for initial development.
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isUser(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // isAdmin checks a custom claim on the user's token.
+    // This is more secure and performant than reading a document.
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.isAdmin == true;
+    }
+
+    // --- Admin Rules ---
+    // Admins have full read/write access to everything.
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if isAdmin();
+    }
+    
+    // --- User Profile Rules ---
+    match /users/{userId} {
+      // Users can read their own profile.
+      allow get: if isUser(userId);
+      // Users can read other profiles for display purposes (e.g., names).
+      allow list: if isSignedIn();
+      // Users cannot create, update, or delete profiles directly (admin only).
+      allow write: if isAdmin();
+    }
+
+    // --- General Read Rules for Non-Admins ---
+    // Logged-in users can read data needed for reports.
+    match /groups/{groupId} {
+      allow get, list: if isSignedIn();
+    }
+    match /members/{memberId} {
+      allow get, list: if isSignedIn();
+    }
+    match /payments/{paymentId} {
+      allow get, list: if isSignedIn();
+    }
+    match /expenses/{expenseId} {
+      allow get, list: if isSignedIn();
+    }
+    match /contributionSettings/{settingId} {
+        allow get, list: if isSignedIn();
+    }
+    match /notes/{noteId} {
+        allow get, list: if isSignedIn();
     }
   }
 }
