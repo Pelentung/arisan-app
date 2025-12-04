@@ -30,6 +30,13 @@ export function SidebarNav() {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
 
+  const isNavItemActive = (href: string) => {
+    if (href === '/') {
+      return pathname === '/';
+    }
+    return pathname.startsWith(href);
+  };
+
   return (
     <>
       <SidebarHeader>
@@ -48,7 +55,7 @@ export function SidebarNav() {
             <SidebarMenuItem key={item.label}>
               <SidebarMenuButton
                 asChild
-                isActive={pathname === item.href && item.href !=='#'}
+                isActive={isNavItemActive(item.href)}
                 tooltip={item.label}
                 onClick={() => setOpenMobile(false)}
               >
