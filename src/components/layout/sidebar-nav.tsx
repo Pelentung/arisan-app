@@ -1,3 +1,4 @@
+
 'use client';
 
 import { usePathname } from 'next/navigation';
@@ -30,7 +31,7 @@ const navItems = [
   { href: '/grup', label: 'Kelola Grup & Anggota', icon: Users },
   { href: '/pembayaran', label: 'Pembayaran', icon: Coins },
   { href: '/pengeluaran', label: 'Pengeluaran', icon: Receipt },
-  { href: '/undian', label: 'Undian Tarikan', icon: Trophy },
+  { href: '/undian', label: 'Yang Sudah Narik', icon: Trophy },
   { href: '/catatan', label: 'Catatan', icon: StickyNote },
 ];
 
