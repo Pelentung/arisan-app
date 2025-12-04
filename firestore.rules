@@ -13,16 +13,15 @@ service cloud.firestore {
     }
 
     function userIsAdmin(uid) {
-      // Check if the user is an admin by looking up their user document.
-      // Make sure there's a 'users' collection where admin status is stored.
       return isSignedIn() && get(/databases/$(database)/documents/users/$(uid)).data.isAdmin == true;
     }
 
     match /users/{userId} {
       // Admins can read/write any user profile.
       allow read, write: if userIsAdmin(request.auth.uid);
-      // Non-admin users can read their own profile.
-      // Non-admin users can also list/read other profiles for display purposes (e.g., names).
+      // Users can create and update their own profile.
+      allow create, update: if isUser(userId);
+      // Non-admin users can read their own profile and list other profiles.
       allow get, list: if isSignedIn() && !userIsAdmin(request.auth.uid);
     }
 
