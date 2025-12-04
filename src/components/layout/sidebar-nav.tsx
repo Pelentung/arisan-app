@@ -1,7 +1,7 @@
 
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Coins,
@@ -41,6 +41,7 @@ const allNavItems = [
 
 export function SidebarNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const { setOpenMobile } = useSidebar();
   const auth = useAuth();
   const { user } = useUser();
@@ -51,6 +52,11 @@ export function SidebarNav() {
     if (href === '/') return pathname === '/';
     if (href === '/grup') return pathname === '/grup';
     return pathname.startsWith(href);
+  };
+
+  const handleSignOut = async () => {
+    await auth.signOut();
+    router.push('/');
   };
 
   if (!user) {
@@ -97,6 +103,7 @@ export function SidebarNav() {
                 asChild
                 isActive={pathname === '/admin'}
                 tooltip={'Ketetapan Iuran'}
+                onClick={() => setOpenMobile(false)}
                 >
                 <Link href="/admin">
                     <Shield />
@@ -106,7 +113,7 @@ export function SidebarNav() {
             </SidebarMenuItem>
             </SidebarMenu>
         )}
-        <Button variant="ghost" className="w-full justify-start" onClick={() => auth.signOut()}>
+        <Button variant="ghost" className="w-full justify-start" onClick={handleSignOut}>
             <LogOut className="mr-2 h-4 w-4" />
             Keluar
         </Button>
