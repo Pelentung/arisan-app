@@ -71,7 +71,7 @@ export function AnnouncementsList() {
   return (
     <Card className="bg-destructive/10 border-destructive/30">
       <CardHeader>
-        <CardTitle className='uppercase text-yellow-400'>Pengumuman</CardTitle>
+        <CardTitle className='uppercase text-blue-500 animate-blink'>Pengumuman</CardTitle>
         <CardDescription className="text-destructive-foreground/80">
           Informasi penting dan terkini dari pengurus arisan.
         </CardDescription>
@@ -90,7 +90,7 @@ export function AnnouncementsList() {
                     </span>
                 </div>
               </AccordionTrigger>
-              <AccordionContent className="whitespace-nowrap text-destructive-foreground/90 w-full overflow-hidden">
+              <AccordionContent className="whitespace-pre-wrap text-destructive-foreground/90 w-full overflow-hidden">
                  <MarqueeText text={announcement.content} />
               </AccordionContent>
             </AccordionItem>
