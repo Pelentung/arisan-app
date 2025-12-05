@@ -251,21 +251,20 @@ export default function KeuanganPage() {
   useEffect(() => {
     if (!db) return;
     
-    let activeSubscriptions = 4;
-    const onSubEnd = () => {
-        activeSubscriptions--;
-        if (activeSubscriptions === 0) {
-            setIsLoading(false);
-        }
-    }
+    const onDataLoaded = () => {
+      // Check if all essential data is loaded
+      if (allPayments.length > 0 && allMembers.length > 0 && allGroups.length > 0 && contributionSettings) {
+        setIsLoading(false);
+      }
+    };
 
     const unsubPayments = subscribeToData(db, 'payments', (data) => { 
         setAllPayments(data as DetailedPayment[]); 
         setLocalChanges(data as DetailedPayment[]); 
-        onSubEnd();
+        onDataLoaded();
     });
-    const unsubMembers = subscribeToData(db, 'members', (data) => {setAllMembers(data as Member[]); onSubEnd();});
-    const unsubExpenses = subscribeToData(db, 'expenses', (data) => {setAllExpenses(data as Expense[]); onSubEnd();});
+    const unsubMembers = subscribeToData(db, 'members', (data) => {setAllMembers(data as Member[]); onDataLoaded();});
+    const unsubExpenses = subscribeToData(db, 'expenses', (data) => {setAllExpenses(data as Expense[]); onDataLoaded();});
     const unsubGroups = subscribeToData(db, 'groups', (data) => {
       const groups = data as Group[];
       setAllGroups(groups);
@@ -273,15 +272,18 @@ export default function KeuanganPage() {
         const mainGroup = groups.find(g => g.name === 'Arisan Utama');
         setSelectedGroup(mainGroup ? mainGroup.id : groups[0].id);
       }
-      onSubEnd();
+      onDataLoaded();
     });
     const unsubSettings = subscribeToData(db, 'contributionSettings', (data) => { 
         if (data.length > 0) setContributionSettings(data[0] as ContributionSettings);
-        // This subscription is not critical for the initial load, so we don't call onSubEnd()
+        onDataLoaded();
     });
 
+    // Initial check in case some data is already cached
+    onDataLoaded();
+
     return () => { unsubPayments(); unsubMembers(); unsubGroups(); unsubSettings(); unsubExpenses(); };
-  }, [db]);
+  }, [db]); // This effect should run only once when the DB is available
 
   const mainArisanGroup = useMemo(() => {
     if (allGroups.length === 0) return null;
@@ -293,8 +295,6 @@ export default function KeuanganPage() {
 
     setIsGenerating(true);
     const [year, month] = selectedMonth.split('-').map(Number);
-    const targetDate = new Date(year, month);
-    const dueDate = endOfMonth(targetDate).toISOString();
 
     const group = allGroups.find(g => g.id === selectedGroup);
     if (!group) {
@@ -302,15 +302,18 @@ export default function KeuanganPage() {
         return;
     }
     
+    // We fetch all payments for the group and filter by month on the client-side
+    // to avoid needing a composite index in Firestore.
     const paymentsQuery = query(collection(db, 'payments'), where('groupId', '==', selectedGroup));
     const querySnapshot = await getDocs(paymentsQuery);
     
-    const paymentsForMonth = querySnapshot.docs.map(doc => doc.data() as DetailedPayment).filter(p => {
+    const paymentsForGroup = querySnapshot.docs.map(doc => doc.data() as DetailedPayment);
+    const paymentsForMonth = paymentsForGroup.filter(p => {
         const paymentDate = new Date(p.dueDate);
         return getYear(paymentDate) === year && getMonth(paymentDate) === month;
     });
-    const existingMemberIds = new Set(paymentsForMonth.map(p => p.memberId));
 
+    const existingMemberIds = new Set(paymentsForMonth.map(p => p.memberId));
     const batch = writeBatch(db);
     let newPaymentsCount = 0;
 
@@ -318,6 +321,8 @@ export default function KeuanganPage() {
         if (!existingMemberIds.has(memberId)) {
             let contributions: any = {};
             let totalAmount = 0;
+            const targetDate = new Date(year, month);
+            const dueDate = endOfMonth(targetDate).toISOString();
 
             if (group.id === mainArisanGroup.id) {
                 contributions.main = { amount: contributionSettings.main, paid: false };
@@ -354,10 +359,11 @@ export default function KeuanganPage() {
 }, [db, selectedMonth, selectedGroup, allGroups, allMembers, contributionSettings, mainArisanGroup, toast]);
 
 useEffect(() => {
-    if (!isLoading && allMembers.length > 0 && allGroups.length > 0) {
+    // Run this effect when relevant data changes, not just on initial load.
+    if (!isLoading && db && selectedGroup && allMembers.length > 0 && contributionSettings && mainArisanGroup) {
       ensurePaymentsExistForMonth();
     }
-  }, [selectedMonth, selectedGroup, isLoading, allMembers, allGroups, ensurePaymentsExistForMonth]);
+  }, [isLoading, db, selectedGroup, allMembers, allGroups, contributionSettings, mainArisanGroup, ensurePaymentsExistForMonth]);
   
   // Filtered data for display
   const filteredPayments = useMemo(() => {
@@ -392,9 +398,20 @@ useEffect(() => {
     setLocalChanges(prev =>
       prev.map(p => {
         if (p.id !== paymentId) return p;
-        const updatedContributions = { ...p.contributions, [contributionType]: { ...p.contributions[contributionType], paid: isPaid } };
-        const allPaid = Object.values(updatedContributions).every(c => c.paid || c.amount === 0);
-        return { ...p, contributions: updatedContributions, status: allPaid ? 'Paid' : 'Unpaid' };
+
+        const updatedContributions = { 
+          ...p.contributions, 
+          [contributionType]: { ...p.contributions[contributionType], paid: isPaid } 
+        };
+        
+        // New logic: Status is "Paid" if main and cash contributions are paid.
+        const isConsideredPaid = updatedContributions.main?.paid && updatedContributions.cash?.paid;
+
+        return { 
+          ...p, 
+          contributions: updatedContributions, 
+          status: isConsideredPaid ? 'Paid' : 'Unpaid' 
+        };
       })
     );
   };
@@ -466,7 +483,7 @@ useEffect(() => {
   };
 
   const renderContent = () => {
-    if (isLoading || allGroups.length === 0) {
+    if (isLoading || !allGroups.length) { // Wait until groups are loaded
         return (
             <div className="flex items-center justify-center h-full pt-20">
                <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -601,4 +618,3 @@ useEffect(() => {
   );
 }
 
-    
