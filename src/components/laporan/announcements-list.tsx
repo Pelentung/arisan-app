@@ -5,11 +5,14 @@ import { useState, useEffect } from 'react';
 import type { Announcement } from '@/app/data';
 import { subscribeToData } from '@/app/data';
 import { useFirestore } from '@/firebase';
+import { cn } from '@/lib/utils';
 
 export function AnnouncementsList() {
   const db = useFirestore();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isFading, setIsFading] = useState(false);
 
   useEffect(() => {
     if (!db) return;
@@ -23,6 +26,21 @@ export function AnnouncementsList() {
     return () => unsubscribe();
   }, [db]);
 
+  useEffect(() => {
+    if (announcements.length > 1) {
+      const intervalId = setInterval(() => {
+        setIsFading(true);
+        setTimeout(() => {
+          setCurrentIndex((prevIndex) => (prevIndex + 1) % announcements.length);
+          setIsFading(false);
+        }, 500); // Duration of the fade-out effect
+      }, 5000); // Change announcement every 5 seconds
+
+      return () => clearInterval(intervalId);
+    }
+  }, [announcements.length]);
+
+
   if (isLoading) {
     return <p className="text-center text-sm text-muted-foreground py-4">Memuat pengumuman...</p>;
   }
@@ -30,18 +48,20 @@ export function AnnouncementsList() {
   if (announcements.length === 0) {
     return <p className="text-center text-sm text-muted-foreground py-4">Belum ada pengumuman.</p>;
   }
-
-  // Combine all announcements into a single string for the marquee effect
-  const marqueeText = announcements
-    .map(announcement => `${announcement.title}: ${announcement.content}`)
-    .join(' *** ');
+  
+  const currentAnnouncement = announcements[currentIndex];
 
   return (
-    <div className="relative flex w-full overflow-x-hidden rounded-md border bg-accent/50 p-2">
-      <div className="animate-marquee whitespace-nowrap text-accent-foreground">
-        <span className="mx-4">{marqueeText}</span>
-        <span className="mx-4">{marqueeText}</span> 
-      </div>
+    <div className={cn(
+        "relative w-full overflow-hidden rounded-md border bg-accent/50 p-4 transition-opacity duration-500",
+        isFading ? "opacity-0" : "opacity-100"
+      )}>
+      {currentAnnouncement && (
+        <div className="text-accent-foreground">
+          <h3 className="font-bold text-md mb-1">{currentAnnouncement.title}</h3>
+          <p className="text-sm whitespace-pre-wrap">{currentAnnouncement.content}</p>
+        </div>
+      )}
     </div>
   );
 }
