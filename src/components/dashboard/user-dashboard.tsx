@@ -23,7 +23,7 @@ export function UserDashboard() {
 
     return (
         <div className="flex flex-col min-h-screen">
-            <Header title="Menu Utama" />
+            <Header title="Selamat Datang di Arisan Keluarga Besar Kami" isMarquee />
             <main className="flex-1 p-4 md:p-6 space-y-6">
                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <h1 className="font-headline text-3xl font-extrabold tracking-tight sm:text-4xl title-gradient">
