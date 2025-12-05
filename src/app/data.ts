@@ -55,7 +55,7 @@ export interface Expense {
     category: 'Sakit' | 'Kemalangan' | 'Iuran Anggota' | 'Talangan Kas' | 'Lainnya';
 }
 
-export interface Note {
+export interface Announcement {
   id: string;
   title: string;
   content: string;

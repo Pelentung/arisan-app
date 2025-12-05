@@ -5,7 +5,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
-  Coins,
   LayoutDashboard,
   LogOut,
   Shield,
@@ -13,7 +12,7 @@ import {
   Users,
   FileText,
   Wallet,
-  StickyNote,
+  Megaphone,
 } from 'lucide-react';
 import { initializeFirebase } from '@/firebase';
 import {
@@ -33,7 +32,7 @@ const navItems = [
   { href: '/keuangan', label: 'Pengelolaan Keuangan', icon: Wallet },
   { href: '/grup', label: 'Kelola Grup & Anggota', icon: Users },
   { href: '/undian', label: 'Yang Sudah Narik', icon: Trophy },
-  { href: '/catatan', label: 'Catatan', icon: StickyNote },
+  { href: '/pengumuman', label: 'Pengumuman', icon: Megaphone },
 ];
 
 export function SidebarNav() {

@@ -46,7 +46,7 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if isUser();
     }
-    match /notes/{noteId} {
+    match /announcements/{announcementId} {
       allow read: if isSignedIn();
       allow write: if isUser();
     }
@@ -56,5 +56,3 @@ service cloud.firestore {
     }
   }
 }
-
-    

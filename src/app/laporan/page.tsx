@@ -12,6 +12,7 @@ import { SidebarProvider, Sidebar, SidebarInset } from '@/components/ui/sidebar'
 import { SidebarNav } from '@/components/layout/sidebar-nav';
 import { UserDashboard } from '@/components/dashboard/user-dashboard';
 import { Loader2 } from 'lucide-react';
+import { AnnouncementsList } from '@/components/laporan/announcements-list';
 
 export default function LaporanPage() {
   const { auth } = initializeFirebase();
@@ -59,12 +60,12 @@ export default function LaporanPage() {
       </Sidebar>
       <SidebarInset>
         <div className="flex flex-col min-h-screen">
-          <Header title="Laporan Keuangan" />
+          <Header title="Laporan & Pengumuman" />
           <main className="flex-1 p-4 md:p-6 space-y-6">
             <h1 className="font-headline text-2xl font-bold tracking-tight text-foreground/90 sm:text-3xl">
-              Laporan & Riwayat Pemenang
+              Laporan, Riwayat & Pengumuman
             </h1>
-            
+            <AnnouncementsList />
             <MonthlyReport />
             <WinnerHistory />
           </main>

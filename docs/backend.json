@@ -34,11 +34,11 @@
             "$ref": "#/entities/expense"
           }
         },
-        "notes": {
+        "announcements": {
           "type": "array",
-          "description": "List of all notes.",
+          "description": "List of all announcements.",
           "items": {
-            "$ref": "#/entities/note"
+            "$ref": "#/entities/announcement"
           }
         },
         "contributionSettings": {
@@ -50,7 +50,7 @@
         "groups",
         "payments",
         "expenses",
-        "notes",
+        "announcements",
         "contributionSettings"
       ]
     },
@@ -261,9 +261,9 @@
         "category"
       ]
     },
-    "note": {
-      "title": "Note",
-      "description": "A note.",
+    "announcement": {
+      "title": "Announcement",
+      "description": "An announcement.",
       "type": "object",
       "properties": {
         "title": {
@@ -366,11 +366,11 @@
       },
       "description": "Stores expense records."
     },
-    "/notes/{noteId}": {
+    "/announcements/{announcementId}": {
       "schema": {
-        "$ref": "#/entities/note"
+        "$ref": "#/entities/announcement"
       },
-      "description": "Stores notes."
+      "description": "Stores announcements."
     },
     "/contributionSettings/{settingId}": {
       "schema": {
