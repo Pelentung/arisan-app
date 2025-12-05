@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, ShieldQuestion, User as UserIcon, Users } from 'lucide-react';
+import { Loader2, ShieldQuestion, User as UserIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { AdminDashboard } from '@/components/dashboard/admin-dashboard';
 import { UserDashboard } from '@/components/dashboard/user-dashboard';
@@ -118,7 +118,7 @@ export default function HomePage() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
       <div className="mb-8 flex flex-col items-center text-center">
         <div className="mb-4 rounded-lg bg-primary/20 p-4 text-primary">
-            <Image src="https://png.pngtree.com/png-vector/20230928/ourmid/pngtree-golden-shield-with-wings-and-a-crown-on-top-png-image_10149091.png" alt="App Logo" width={64} height={64} />
+            <Image src="https://i.imgur.com/gYqgA2i.png" alt="App Logo" width={64} height={64} />
         </div>
         <h1 className="font-headline text-3xl font-extrabold tracking-tight sm:text-4xl title-gradient">
           ARISAN KELUARGA BESAR Alm. KAKEK NGAMIN
