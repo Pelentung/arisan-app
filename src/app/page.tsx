@@ -115,15 +115,17 @@ export default function HomePage() {
 
   // If no user, show the login form
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
-      <div className="mb-8 flex flex-col items-center text-center">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 overflow-x-hidden">
+      <div className="mb-8 flex w-full flex-col items-center text-center">
         <div className="mb-4 rounded-lg bg-primary/20 text-primary h-16 w-16 overflow-hidden">
             <Image src="https://i.imgur.com/Euyh8nM.png" alt="App Logo" width={64} height={64} className="object-cover w-full h-full"/>
         </div>
         <h1 className="font-headline text-3xl font-extrabold tracking-tight sm:text-4xl title-gradient">
           ARISAN KELUARGA BESAR Alm. KAKEK NGAMIN
         </h1>
-        <p className="text-muted-foreground">Alm. Kakek Ngamin</p>
+        <div className="w-full overflow-hidden whitespace-nowrap">
+            <p className="text-muted-foreground animate-marquee-slow inline-block">Indahnya Tali Persaudaraan</p>
+        </div>
       </div>
 
       <Card className="w-full max-w-sm">

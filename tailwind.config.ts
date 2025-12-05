@@ -1,3 +1,4 @@
+
 import type {Config} from 'tailwindcss';
 
 export default {
@@ -102,6 +103,7 @@ export default {
         'accordion-up': 'accordion-up 0.2s ease-out',
         blink: 'blink 1.5s 2',
         marquee: 'marquee 15s linear infinite',
+        'marquee-slow': 'marquee 25s linear infinite',
       },
     },
   },
