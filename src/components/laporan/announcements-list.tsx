@@ -35,7 +35,7 @@ export function AnnouncementsList() {
           setCurrentIndex((prevIndex) => (prevIndex + 1) % announcements.length);
           setIsFading(false);
         }, 500); // Duration of the fade-out effect
-      }, 25000); // Change announcement every 25 seconds
+      }, 7000); // Change announcement every 7 seconds
 
       return () => clearInterval(intervalId);
     }
@@ -64,10 +64,7 @@ export function AnnouncementsList() {
       {currentAnnouncement && (
         <div className="text-foreground">
           <h3 className="font-bold text-lg mb-2">{currentAnnouncement.title}</h3>
-          <div className="relative flex overflow-x-hidden">
-            <p className="animate-marquee whitespace-nowrap text-muted-foreground">{currentAnnouncement.content}</p>
-             <p className="absolute top-0 animate-marquee2 whitespace-nowrap text-muted-foreground">{currentAnnouncement.content}</p>
-          </div>
+          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{currentAnnouncement.content}</p>
         </div>
       )}
     </div>
