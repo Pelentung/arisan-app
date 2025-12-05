@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { DetailedPayment, Member, Group, ContributionSettings, Expense, Note } from '@/app/data';
 import { subscribeToData } from '@/app/data';
 import { Header } from '@/components/layout/header';
@@ -232,6 +232,7 @@ export default function KeuanganPage() {
   const [allGroups, setAllGroups] = useState<Group[]>([]);
   const [allExpenses, setAllExpenses] = useState<Expense[]>([]);
   const [contributionSettings, setContributionSettings] = useState<ContributionSettings | null>(null);
+  const [mainArisanGroup, setMainArisanGroup] = useState<Group | null>(null);
 
   // Page state
   const monthOptions = useMemo(() => generateMonthOptions(), []);
@@ -246,128 +247,141 @@ export default function KeuanganPage() {
   // Loading state
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const syncTracker = useRef<Set<string>>(new Set());
 
   // Data fetching
   useEffect(() => {
     if (!db) return;
     
-    let isDataLoaded = false;
+    let isMounted = true;
+    let dataLoadedCount = 0;
+    const requiredDataCount = 5; // payments, members, groups, settings, expenses
+
     const onDataLoaded = () => {
-      // Check if all essential data is loaded
-      if (allPayments.length > 0 && allMembers.length > 0 && allGroups.length > 0 && contributionSettings) {
-        if (!isDataLoaded) {
-            setIsLoading(false);
-            isDataLoaded = true;
-        }
+      if (!isMounted) return;
+      dataLoadedCount++;
+      if (dataLoadedCount >= requiredDataCount) {
+        setIsLoading(false);
       }
     };
 
     const unsubPayments = subscribeToData(db, 'payments', (data) => { 
-        setAllPayments(data as DetailedPayment[]); 
-        setLocalChanges(data as DetailedPayment[]); 
-        onDataLoaded();
+        if (isMounted) {
+            setAllPayments(data as DetailedPayment[]); 
+            setLocalChanges(data as DetailedPayment[]);
+            onDataLoaded();
+        }
     });
-    const unsubMembers = subscribeToData(db, 'members', (data) => {setAllMembers(data as Member[]); onDataLoaded();});
-    const unsubExpenses = subscribeToData(db, 'expenses', (data) => {setAllExpenses(data as Expense[]); onDataLoaded();});
+    const unsubMembers = subscribeToData(db, 'members', (data) => { if (isMounted) { setAllMembers(data as Member[]); onDataLoaded(); } });
+    const unsubExpenses = subscribeToData(db, 'expenses', (data) => { if (isMounted) { setAllExpenses(data as Expense[]); onDataLoaded(); } });
     const unsubGroups = subscribeToData(db, 'groups', (data) => {
-      const groups = data as Group[];
-      setAllGroups(groups);
-      if (!selectedGroup && groups.length > 0) {
+      if (isMounted) {
+        const groups = data as Group[];
+        setAllGroups(groups);
         const mainGroup = groups.find(g => g.name === 'Arisan Utama');
-        setSelectedGroup(mainGroup ? mainGroup.id : groups[0].id);
+        if (mainGroup) {
+          setMainArisanGroup(mainGroup);
+          if (!selectedGroup) {
+            setSelectedGroup(mainGroup.id);
+          }
+        }
+        onDataLoaded();
       }
-      onDataLoaded();
     });
     const unsubSettings = subscribeToData(db, 'contributionSettings', (data) => { 
-        if (data.length > 0) setContributionSettings(data[0] as ContributionSettings);
-        onDataLoaded();
-    });
-
-    // Initial check in case some data is already cached
-    onDataLoaded();
-
-    return () => { unsubPayments(); unsubMembers(); unsubGroups(); unsubSettings(); unsubExpenses(); };
-  }, [db, selectedGroup, allGroups.length, allMembers.length, allPayments.length, contributionSettings]); 
-
-  const mainArisanGroup = useMemo(() => {
-    if (allGroups.length === 0) return null;
-    return allGroups.find(g => g.name === 'Arisan Utama');
-  }, [allGroups]);
-
-  const ensurePaymentsExistForMonth = useCallback(async () => {
-    if (!db || !selectedGroup || allMembers.length === 0 || !contributionSettings || !mainArisanGroup) return;
-
-    setIsGenerating(true);
-    const [year, month] = selectedMonth.split('-').map(Number);
-
-    const group = allGroups.find(g => g.id === selectedGroup);
-    if (!group) {
-        setIsGenerating(false);
-        return;
-    }
-    
-    // We fetch all payments for the group and filter by month on the client-side
-    // to avoid needing a composite index in Firestore.
-    const paymentsQuery = query(collection(db, 'payments'), where('groupId', '==', selectedGroup));
-    const querySnapshot = await getDocs(paymentsQuery);
-    
-    const paymentsForGroup = querySnapshot.docs.map(doc => doc.data() as DetailedPayment);
-    const paymentsForMonth = paymentsForGroup.filter(p => {
-        const paymentDate = new Date(p.dueDate);
-        return getYear(paymentDate) === year && getMonth(paymentDate) === month;
-    });
-
-    const existingMemberIds = new Set(paymentsForMonth.map(p => p.memberId));
-    const batch = writeBatch(db);
-    let newPaymentsCount = 0;
-
-    group.memberIds.forEach(memberId => {
-        if (!existingMemberIds.has(memberId)) {
-            let contributions: any = {};
-            let totalAmount = 0;
-            const targetDate = new Date(year, month);
-            const dueDate = endOfMonth(targetDate).toISOString();
-
-            if (group.id === mainArisanGroup.id) {
-                contributions.main = { amount: contributionSettings.main, paid: false };
-                contributions.cash = { amount: contributionSettings.cash, paid: false };
-                contributions.sick = { amount: contributionSettings.sick, paid: false };
-                contributions.bereavement = { amount: contributionSettings.bereavement, paid: false };
-                contributionSettings.others.forEach(other => {
-                    contributions[other.id] = { amount: other.amount, paid: false };
-                });
-                totalAmount = Object.values(contributions).reduce((sum, c: any) => sum + c.amount, 0);
-            } else {
-                totalAmount = group.contributionAmount;
-                contributions.main = { amount: totalAmount, paid: false };
-            }
-
-            const newPaymentDoc = doc(collection(db, 'payments'));
-            batch.set(newPaymentDoc, { memberId, groupId: group.id, dueDate, contributions, totalAmount, status: 'Unpaid' });
-            newPaymentsCount++;
+        if (isMounted) {
+            if (data.length > 0) setContributionSettings(data[0] as ContributionSettings);
+            onDataLoaded();
         }
     });
 
-    if (newPaymentsCount > 0) {
-        await batch.commit().then(() => {
+    return () => { 
+        isMounted = false;
+        unsubPayments(); unsubMembers(); unsubGroups(); unsubSettings(); unsubExpenses(); 
+    };
+  }, [db, selectedGroup]); 
+  
+  const ensurePaymentsExistForMonth = useCallback(async () => {
+    if (isLoading || isGenerating || !db || !selectedGroup || !mainArisanGroup || !contributionSettings || allMembers.length === 0) return;
+    
+    const syncKey = `${selectedGroup}-${selectedMonth}`;
+    if (syncTracker.current.has(syncKey)) {
+        return; // Already synced for this combination
+    }
+
+    setIsGenerating(true);
+
+    try {
+        const group = allGroups.find(g => g.id === selectedGroup);
+        if (!group) return;
+
+        const [year, month] = selectedMonth.split('-').map(Number);
+        
+        // We fetch all payments for the group and filter by month on the client-side
+        // to avoid needing a composite index in Firestore.
+        const paymentsQuery = query(collection(db, 'payments'), where('groupId', '==', selectedGroup));
+        const querySnapshot = await getDocs(paymentsQuery);
+        
+        const paymentsForGroup = querySnapshot.docs.map(doc => doc.data() as DetailedPayment);
+        const paymentsForMonth = paymentsForGroup.filter(p => {
+            const paymentDate = new Date(p.dueDate);
+            return getYear(paymentDate) === year && getMonth(paymentDate) === month;
+        });
+
+        const existingMemberIds = new Set(paymentsForMonth.map(p => p.memberId));
+        const batch = writeBatch(db);
+        let newPaymentsCount = 0;
+
+        group.memberIds.forEach(memberId => {
+            if (!existingMemberIds.has(memberId)) {
+                let contributions: any = {};
+                let totalAmount = 0;
+                const targetDate = new Date(year, month);
+                const dueDate = endOfMonth(targetDate).toISOString();
+
+                if (group.id === mainArisanGroup.id) {
+                    contributions.main = { amount: contributionSettings.main, paid: false };
+                    contributions.cash = { amount: contributionSettings.cash, paid: false };
+                    contributions.sick = { amount: contributionSettings.sick, paid: false };
+                    contributions.bereavement = { amount: contributionSettings.bereavement, paid: false };
+                    contributionSettings.others.forEach(other => {
+                        contributions[other.id] = { amount: other.amount, paid: false };
+                    });
+                    totalAmount = Object.values(contributions).reduce((sum, c: any) => sum + c.amount, 0);
+                } else {
+                    totalAmount = group.contributionAmount;
+                    contributions.main = { amount: totalAmount, paid: false };
+                }
+
+                const newPaymentDoc = doc(collection(db, 'payments'));
+                batch.set(newPaymentDoc, { memberId, groupId: group.id, dueDate, contributions, totalAmount, status: 'Unpaid' });
+                newPaymentsCount++;
+            }
+        });
+
+        if (newPaymentsCount > 0) {
+            await batch.commit();
             toast({
                 title: "Sinkronisasi Berhasil",
-                description: `${newPaymentsCount} catatan iuran baru telah dibuat untuk anggota yang belum terdaftar.`,
+                description: `${newPaymentsCount} catatan iuran baru telah dibuat.`,
             });
-        }).catch(serverError => {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'payments (batch create)', operation: 'create' }));
-        });
+        }
+        syncTracker.current.add(syncKey);
+    } catch (error) {
+        console.error("Error ensuring payments exist:", error);
+        if (error instanceof FirestorePermissionError) {
+             errorEmitter.emit('permission-error', error);
+        } else {
+             errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'payments (batch create)', operation: 'create' }));
+        }
+    } finally {
+        setIsGenerating(false);
     }
+  }, [isLoading, isGenerating, db, selectedGroup, selectedMonth, allGroups, allMembers, contributionSettings, mainArisanGroup, toast]);
 
-    setIsGenerating(false);
-}, [db, selectedMonth, selectedGroup, allGroups, allMembers, contributionSettings, mainArisanGroup, toast]);
-
-useEffect(() => {
-    // Run this effect when relevant data changes, not just on initial load.
-    if (!isLoading && db && selectedGroup && allMembers.length > 0 && allGroups.length > 0 && contributionSettings && mainArisanGroup) {
+  useEffect(() => {
       ensurePaymentsExistForMonth();
-    }
-  }, [isLoading, db, selectedGroup, allMembers, allGroups, contributionSettings, mainArisanGroup, ensurePaymentsExistForMonth, selectedMonth]);
+  }, [ensurePaymentsExistForMonth]);
   
   // Filtered data for display
   const filteredPayments = useMemo(() => {
@@ -487,7 +501,7 @@ useEffect(() => {
   };
 
   const renderContent = () => {
-    if (isLoading || !allGroups.length) { // Wait until groups are loaded
+    if (isLoading) {
         return (
             <div className="flex items-center justify-center h-full pt-20">
                <Loader2 className="h-8 w-8 animate-spin text-primary" />
