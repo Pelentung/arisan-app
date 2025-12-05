@@ -6,6 +6,7 @@ import type { Announcement } from '@/app/data';
 import { subscribeToData } from '@/app/data';
 import { useFirestore } from '@/firebase';
 import { cn } from '@/lib/utils';
+import { Megaphone } from 'lucide-react';
 
 export function AnnouncementsList() {
   const db = useFirestore();
@@ -34,7 +35,7 @@ export function AnnouncementsList() {
           setCurrentIndex((prevIndex) => (prevIndex + 1) % announcements.length);
           setIsFading(false);
         }, 500); // Duration of the fade-out effect
-      }, 5000); // Change announcement every 5 seconds
+      }, 7000); // Change announcement every 7 seconds to allow for reading
 
       return () => clearInterval(intervalId);
     }
@@ -46,20 +47,27 @@ export function AnnouncementsList() {
   }
 
   if (announcements.length === 0) {
-    return <p className="text-center text-sm text-muted-foreground py-4">Belum ada pengumuman.</p>;
+    return (
+        <div className="flex items-center justify-center rounded-md border border-dashed p-8 text-center text-muted-foreground">
+            Belum ada pengumuman.
+        </div>
+    );
   }
   
   const currentAnnouncement = announcements[currentIndex];
 
   return (
     <div className={cn(
-        "relative w-full overflow-hidden rounded-md border bg-accent/50 p-4 transition-opacity duration-500",
+        "relative w-full overflow-hidden rounded-md border bg-card p-4 transition-opacity duration-500",
         isFading ? "opacity-0" : "opacity-100"
       )}>
       {currentAnnouncement && (
-        <div className="text-accent-foreground">
-          <h3 className="font-bold text-md mb-1">{currentAnnouncement.title}</h3>
-          <p className="text-sm whitespace-pre-wrap">{currentAnnouncement.content}</p>
+        <div className="text-foreground">
+          <h3 className="font-bold text-lg mb-2">{currentAnnouncement.title}</h3>
+          <div className="relative flex overflow-x-hidden">
+            <p className="animate-marquee whitespace-nowrap text-muted-foreground">{currentAnnouncement.content}</p>
+             <p className="absolute top-0 animate-marquee2 whitespace-nowrap text-muted-foreground">{currentAnnouncement.content}</p>
+          </div>
         </div>
       )}
     </div>

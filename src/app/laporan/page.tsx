@@ -80,13 +80,13 @@ export default function LaporanPage() {
                 </h1>
                 
                 <div className="grid grid-cols-1 gap-6">
-                   <Card className="relative overflow-hidden border-yellow-500/50 border-t-4">
+                   <Card className="relative overflow-hidden">
                         <CardHeader className="flex flex-row items-start gap-4">
                             <div className="p-2 bg-primary/20 text-primary rounded-lg">
                                 <Megaphone className="w-6 h-6"/>
                             </div>
                             <div>
-                                <CardTitle className="text-primary animate-blink">Pengumuman</CardTitle>
+                                <CardTitle className="text-primary animate-blink font-bold">PENGUMUMAN</CardTitle>
                                 <CardDescription>Informasi penting dan terkini dari pengurus arisan.</CardDescription>
                             </div>
                         </CardHeader>
