@@ -1,9 +1,8 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import type { Member, Group } from '@/app/data';
-import { subscribeToData } from '@/app/data';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,57 +24,62 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Trophy, CheckCircle2 } from 'lucide-react';
+import { Trophy, CheckCircle2, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { useFirestore } from '@/firebase';
-import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { ScrollArea } from '../ui/scroll-area';
 
 interface LotteryCardProps {
     group: Group;
+    members: Member[];
     title: string;
     description: string;
 }
 
-export function LotteryCard({ group, title, description }: LotteryCardProps) {
+export function LotteryCard({ group, members, title, description }: LotteryCardProps) {
   const { toast } = useToast();
   const db = useFirestore();
-  const [members, setMembers] = useState<Member[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
-    if (!db) return;
-    const unsub = subscribeToData(db, 'members', (data) => setMembers(data as Member[]));
-    return () => unsub();
-  }, [db]);
-  
   const currentWinner = members.find(m => m.id === group.currentWinnerId);
   const groupMembers = members.filter(m => group.memberIds.includes(m.id));
   const winnerIds = group.winnerHistory?.map(wh => wh.memberId) || [];
 
-  const handleSelectWinner = async (selectedMember: Member) => {
+  const handleSelectWinner = async (selectedMember: Member | null) => {
     if (!db || isSaving) return;
 
     setIsSaving(true);
     
     const groupRef = doc(db, 'groups', group.id);
-    const drawMonth = format(new Date(), 'yyyy-MM-dd');
     
-    let dataToUpdate: any = {
-      currentWinnerId: selectedMember.id,
-    };
-    
-    if (selectedMember.id) {
-        dataToUpdate.winnerHistory = arrayUnion({ month: drawMonth, memberId: selectedMember.id });
+    // Use a batch write to ensure atomicity
+    const batch = writeBatch(db);
+
+    if (selectedMember) {
+        // Set new winner and add to history
+        const drawMonth = new Date().toISOString();
+        const newWinnerHistoryEntry = { month: drawMonth, memberId: selectedMember.id };
+        
+        batch.update(groupRef, {
+            currentWinnerId: selectedMember.id,
+            winnerHistory: arrayUnion(newWinnerHistoryEntry)
+        });
+
+    } else {
+        // Clear the current winner
+        batch.update(groupRef, {
+            currentWinnerId: ''
+        });
     }
 
     try {
-        await updateDoc(groupRef, dataToUpdate);
-        if (selectedMember.id) {
+        await batch.commit();
+        if (selectedMember) {
             toast({
               title: "Pemenang Telah Ditetapkan",
               description: `Selamat, ${selectedMember.name} telah menjadi penarik arisan.`,
@@ -90,7 +94,7 @@ export function LotteryCard({ group, title, description }: LotteryCardProps) {
         const permissionError = new FirestorePermissionError({
             path: groupRef.path,
             operation: 'update',
-            requestResourceData: dataToUpdate
+            requestResourceData: selectedMember ? { currentWinnerId: selectedMember.id } : { currentWinnerId: '' }
         });
         errorEmitter.emit('permission-error', permissionError);
     } finally {
@@ -148,7 +152,7 @@ export function LotteryCard({ group, title, description }: LotteryCardProps) {
                                     <AlertDialogHeader>
                                     <AlertDialogTitle>Konfirmasi Pemenang</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                        Apakah Anda yakin ingin menetapkan <strong>{member.name}</strong> sebagai pemenang arisan untuk periode ini? Tindakan ini tidak dapat diurungkan.
+                                        Apakah Anda yakin ingin menetapkan <strong>{member.name}</strong> sebagai pemenang arisan untuk periode ini? Tindakan ini akan menambahkan anggota ke riwayat pemenang.
                                     </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
@@ -168,7 +172,8 @@ export function LotteryCard({ group, title, description }: LotteryCardProps) {
             </ScrollArea>
         </CardContent>
         <CardFooter className="pt-4">
-            <Button className="w-full" variant="secondary" onClick={() => handleSelectWinner({ id: '', name: 'Kosongkan Pemenang' } as Member)} disabled={isSaving}>
+            <Button className="w-full" variant="secondary" onClick={() => handleSelectWinner(null)} disabled={isSaving}>
+                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Kosongkan Pemenang Saat Ini
             </Button>
         </CardFooter>
