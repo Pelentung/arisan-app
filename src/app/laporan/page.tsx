@@ -29,7 +29,6 @@ export default function LaporanPage() {
     const authUnsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setIsLoading(false);
-      // Let the component decide rendering, no redirect here for guests
     });
     
     // Subscribe to all necessary data for reports
@@ -46,23 +45,20 @@ export default function LaporanPage() {
       // Unsubscribe from all data listeners on component unmount
       unsubscribeAll();
     };
-  }, [auth, router, db]);
+  }, [auth, db]);
+
+  useEffect(() => {
+    // Redirect logic must be in useEffect to avoid "setstate in render" errors.
+    if (!isLoading && !user) {
+      router.push('/');
+    }
+  }, [isLoading, user, router]);
   
-  if (isLoading) {
+  if (isLoading || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
-    );
-  }
-
-  // If no user, redirect to login which is now the root page
-  if (!user) {
-    router.push('/');
-    return (
-        <div className="flex min-h-screen items-center justify-center">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        </div>
     );
   }
 
@@ -134,13 +130,7 @@ export default function LaporanPage() {
       );
   }
 
-  // Guest user view is now handled on the main page. Redirect guests from here.
-  router.push('/');
-  return (
-    <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-    </div>
-  );
+  // Guest user view is handled on the main page. A second redirect is here just in case.
+  // This redirect will also be safely handled by the useEffect above.
+  return null;
 }
-
-    
