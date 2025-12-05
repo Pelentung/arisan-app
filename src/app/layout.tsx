@@ -7,6 +7,7 @@ import { FirebaseClientProvider } from '@/firebase/client-provider';
 export const metadata: Metadata = {
   title: 'Arisan Alm. Kakek Ngamin',
   description: 'Manajemen Keuangan Arisan Keluarga Besar Alm. Kakek Ngamin',
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({
@@ -23,6 +24,7 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&display=swap"
           rel="stylesheet"
         />
+        <meta name="theme-color" content="#F2994A" />
       </head>
       <body className={cn('font-body antialiased min-h-screen bg-background')}>
         <FirebaseClientProvider>
@@ -33,5 +35,3 @@ export default function RootLayout({
     </html>
   );
 }
-
-    
