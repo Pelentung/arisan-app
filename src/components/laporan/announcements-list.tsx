@@ -21,6 +21,15 @@ import {
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 
+const MarqueeText = ({ text }: { text: string }) => {
+  return (
+    <div className="overflow-hidden whitespace-nowrap w-full">
+      <div className="inline-block animate-marquee">{text}</div>
+    </div>
+  );
+};
+
+
 export function AnnouncementsList() {
   const db = useFirestore();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -60,27 +69,29 @@ export function AnnouncementsList() {
   }
 
   return (
-    <Card>
+    <Card className="bg-destructive/10 border-destructive/30">
       <CardHeader>
         <CardTitle>Pengumuman</CardTitle>
-        <CardDescription>
+        <CardDescription className="text-destructive-foreground/80">
           Informasi penting dan terkini dari pengurus arisan.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Accordion type="single" collapsible defaultValue={announcements[0]?.id}>
           {announcements.map((announcement) => (
-            <AccordionItem value={announcement.id} key={announcement.id}>
+            <AccordionItem value={announcement.id} key={announcement.id} className="border-destructive/40">
               <AccordionTrigger>
-                <div className="flex flex-col items-start text-left">
-                    <span className="font-semibold">{announcement.title}</span>
-                    <span className="text-xs text-muted-foreground">
+                <div className="flex flex-col items-start text-left w-full overflow-hidden">
+                    <div className="font-semibold w-full">
+                        <MarqueeText text={announcement.title} />
+                    </div>
+                    <span className="text-xs text-destructive-foreground/70">
                         Diperbarui: {format(new Date(announcement.updatedAt), 'd MMMM yyyy', { locale: id })}
                     </span>
                 </div>
               </AccordionTrigger>
-              <AccordionContent className="whitespace-pre-wrap text-muted-foreground">
-                {announcement.content}
+              <AccordionContent className="whitespace-nowrap text-destructive-foreground/90 w-full overflow-hidden">
+                 <MarqueeText text={announcement.content} />
               </AccordionContent>
             </AccordionItem>
           ))}
