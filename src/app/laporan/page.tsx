@@ -86,7 +86,7 @@ export default function LaporanPage() {
                                 <Megaphone className="w-6 h-6"/>
                             </div>
                             <div>
-                                <CardTitle>Pengumuman</CardTitle>
+                                <CardTitle className="text-red-500 animate-blink">Pengumuman</CardTitle>
                                 <CardDescription>Informasi penting dan terkini dari pengurus arisan.</CardDescription>
                             </div>
                         </CardHeader>

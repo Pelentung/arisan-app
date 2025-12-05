@@ -5,14 +5,6 @@ import { useState, useEffect } from 'react';
 import type { Announcement } from '@/app/data';
 import { subscribeToData } from '@/app/data';
 import { useFirestore } from '@/firebase';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
-import { format } from 'date-fns';
-import { id } from 'date-fns/locale';
 
 export function AnnouncementsList() {
   const db = useFirestore();
@@ -22,7 +14,6 @@ export function AnnouncementsList() {
   useEffect(() => {
     if (!db) return;
     const unsubscribe = subscribeToData(db, 'announcements', (data) => {
-        // Sort by most recent
         const sortedData = (data as Announcement[]).sort((a, b) => 
             new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
         );
@@ -33,32 +24,24 @@ export function AnnouncementsList() {
   }, [db]);
 
   if (isLoading) {
-    return <p>Memuat pengumuman...</p>;
+    return <p className="text-center text-sm text-muted-foreground py-4">Memuat pengumuman...</p>;
   }
 
   if (announcements.length === 0) {
     return <p className="text-center text-sm text-muted-foreground py-4">Belum ada pengumuman.</p>;
   }
 
+  // Combine all announcements into a single string for the marquee effect
+  const marqueeText = announcements
+    .map(announcement => `${announcement.title}: ${announcement.content}`)
+    .join(' *** ');
+
   return (
-    <Accordion type="single" collapsible defaultValue={announcements[0]?.id}>
-      {announcements.map((announcement) => (
-        <AccordionItem value={announcement.id} key={announcement.id} className="border-border/40">
-          <AccordionTrigger>
-            <div className="flex flex-col items-start text-left w-full overflow-hidden">
-                <div className="font-semibold w-full truncate">
-                    {announcement.title}
-                </div>
-                <span className="text-xs text-muted-foreground">
-                    Diperbarui: {format(new Date(announcement.updatedAt), 'd MMMM yyyy', { locale: id })}
-                </span>
-            </div>
-          </AccordionTrigger>
-          <AccordionContent className="whitespace-pre-wrap text-foreground/90">
-             {announcement.content}
-          </AccordionContent>
-        </AccordionItem>
-      ))}
-    </Accordion>
+    <div className="relative flex w-full overflow-x-hidden rounded-md border bg-accent/50 p-2">
+      <div className="animate-marquee whitespace-nowrap text-accent-foreground">
+        <span className="mx-4">{marqueeText}</span>
+        <span className="mx-4">{marqueeText}</span> 
+      </div>
+    </div>
   );
 }
