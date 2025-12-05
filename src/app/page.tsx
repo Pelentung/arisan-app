@@ -124,7 +124,7 @@ export default function HomePage() {
           ARISAN KELUARGA BESAR Alm. KAKEK NGAMIN
         </h1>
         <div className="w-full overflow-hidden whitespace-nowrap">
-            <p className="text-muted-foreground animate-marquee-slow inline-block">Indahnya Tali Persaudaraan</p>
+            <p className="text-muted-foreground animate-marquee-slow inline-block font-bold">Indahnya Tali Persaudaraan</p>
         </div>
       </div>
 
