@@ -71,7 +71,7 @@ export function AnnouncementsList() {
   return (
     <Card className="bg-destructive/10 border-destructive/30">
       <CardHeader>
-        <CardTitle>Pengumuman</CardTitle>
+        <CardTitle className='uppercase text-yellow-400'>Pengumuman</CardTitle>
         <CardDescription className="text-destructive-foreground/80">
           Informasi penting dan terkini dari pengurus arisan.
         </CardDescription>
