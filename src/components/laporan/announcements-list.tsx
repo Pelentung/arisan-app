@@ -82,8 +82,8 @@ export function AnnouncementsList() {
             <AccordionItem value={announcement.id} key={announcement.id} className="border-destructive/40">
               <AccordionTrigger>
                 <div className="flex flex-col items-start text-left w-full overflow-hidden">
-                    <div className="font-semibold w-full">
-                        <MarqueeText text={announcement.title} />
+                    <div className="font-semibold w-full truncate">
+                        {announcement.title}
                     </div>
                     <span className="text-xs text-destructive-foreground/70">
                         Diperbarui: {format(new Date(announcement.updatedAt), 'd MMMM yyyy', { locale: id })}
