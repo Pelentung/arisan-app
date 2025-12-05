@@ -102,7 +102,7 @@ export function MonthlyReport() {
         return (
              <Card>
                 <CardHeader>
-                    <CardTitle>Laporan Bulanan</CardTitle>
+                    <CardTitle className="uppercase text-blue-600">Rangkuman Laporan Keuangan</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <p>Memuat data laporan...</p>
@@ -118,7 +118,7 @@ export function MonthlyReport() {
         <CardHeader>
           <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
             <div>
-                <CardTitle>Rangkuman Laporan Keuangan</CardTitle>
+                <CardTitle className="uppercase text-blue-600">Rangkuman Laporan Keuangan</CardTitle>
                 <CardDescription>Pilih bulan dan tahun untuk melihat riwayat laporan keuangan.</CardDescription>
             </div>
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>

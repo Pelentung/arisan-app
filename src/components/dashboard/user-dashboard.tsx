@@ -40,7 +40,7 @@ export function UserDashboard() {
                  
                  <Card>
                     <CardHeader>
-                        <CardTitle>Pengumuman</CardTitle>
+                        <CardTitle className="uppercase text-blue-600">Pengumuman</CardTitle>
                         <CardDescription>Informasi penting dan terkini dari pengurus arisan.</CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -52,7 +52,7 @@ export function UserDashboard() {
                 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Anggota Yang Sudah Narik</CardTitle>
+                        <CardTitle className="uppercase text-blue-600">Anggota Yang Sudah Narik</CardTitle>
                         <CardDescription>Daftar anggota yang sudah pernah memenangkan undian di setiap grup.</CardDescription>
                     </CardHeader>
                     <CardContent>
