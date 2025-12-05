@@ -14,6 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle } from 'lucide-react';
 import { useFirestore } from '@/firebase';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 
 export function WinnerHistory() {
   const db = useFirestore();
@@ -78,33 +79,39 @@ export function WinnerHistory() {
             <AccordionTrigger>{group.name}</AccordionTrigger>
             <AccordionContent>
               {winners.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {winners.map(winner => (
-                    <div
-                      key={winner!.id}
-                      className="flex items-center gap-3 rounded-md border p-3"
-                    >
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage
-                          src={winner!.avatarUrl}
-                          data-ai-hint={winner!.avatarHint}
-                        />
-                        <AvatarFallback>
-                          {winner!.name.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <p className="font-semibold text-sm">
-                          {winner!.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Menarik pada: {new Date(winner!.month).toLocaleDateString('id-ID', { month: 'long', year: 'numeric'})}
-                        </p>
-                      </div>
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    </div>
-                  ))}
-                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-muted-foreground">Nama</TableHead>
+                      <TableHead className="text-right text-muted-foreground">Menarik pada</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {winners.map(winner => (
+                      <TableRow key={winner!.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-9 w-9">
+                              <AvatarImage
+                                src={winner!.avatarUrl}
+                                data-ai-hint={winner!.avatarHint}
+                              />
+                              <AvatarFallback>
+                                {winner!.name.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium text-foreground">
+                              {winner!.name}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right text-foreground">
+                           {new Date(winner!.month).toLocaleDateString('id-ID', { month: 'long', year: 'numeric'})}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   Belum ada riwayat penarikan untuk grup ini.
