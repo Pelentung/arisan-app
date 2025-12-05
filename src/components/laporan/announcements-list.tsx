@@ -6,13 +6,6 @@ import type { Announcement } from '@/app/data';
 import { subscribeToData } from '@/app/data';
 import { useFirestore } from '@/firebase';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
   Accordion,
   AccordionContent,
   AccordionItem,
@@ -20,15 +13,6 @@ import {
 } from '@/components/ui/accordion';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
-
-const MarqueeText = ({ text }: { text: string }) => {
-  return (
-    <div className="overflow-hidden whitespace-nowrap w-full">
-      <div className="inline-block animate-marquee">{text}</div>
-    </div>
-  );
-};
-
 
 export function AnnouncementsList() {
   const db = useFirestore();
@@ -49,54 +33,32 @@ export function AnnouncementsList() {
   }, [db]);
 
   if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Pengumuman</CardTitle>
-          <CardDescription>
-            Informasi penting dan terkini dari pengurus arisan.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p>Memuat pengumuman...</p>
-        </CardContent>
-      </Card>
-    );
+    return <p>Memuat pengumuman...</p>;
   }
 
   if (announcements.length === 0) {
-    return null; // Don't render the card if there are no announcements
+    return <p className="text-center text-sm text-muted-foreground py-4">Belum ada pengumuman.</p>;
   }
 
   return (
-    <Card className="bg-accent/20 border-accent/30">
-      <CardHeader>
-        <CardTitle className='uppercase text-primary animate-blink'>Pengumuman</CardTitle>
-        <CardDescription className="text-foreground/80">
-          Informasi penting dan terkini dari pengurus arisan.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Accordion type="single" collapsible defaultValue={announcements[0]?.id}>
-          {announcements.map((announcement) => (
-            <AccordionItem value={announcement.id} key={announcement.id} className="border-primary/40">
-              <AccordionTrigger>
-                <div className="flex flex-col items-start text-left w-full overflow-hidden text-foreground">
-                    <div className="font-semibold w-full truncate">
-                        {announcement.title}
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                        Diperbarui: {format(new Date(announcement.updatedAt), 'd MMMM yyyy', { locale: id })}
-                    </span>
+    <Accordion type="single" collapsible defaultValue={announcements[0]?.id}>
+      {announcements.map((announcement) => (
+        <AccordionItem value={announcement.id} key={announcement.id} className="border-border/40">
+          <AccordionTrigger>
+            <div className="flex flex-col items-start text-left w-full overflow-hidden">
+                <div className="font-semibold w-full truncate">
+                    {announcement.title}
                 </div>
-              </AccordionTrigger>
-              <AccordionContent className="whitespace-pre-wrap text-foreground/90 w-full overflow-hidden">
-                 <MarqueeText text={announcement.content} />
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
-      </CardContent>
-    </Card>
+                <span className="text-xs text-muted-foreground">
+                    Diperbarui: {format(new Date(announcement.updatedAt), 'd MMMM yyyy', { locale: id })}
+                </span>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="whitespace-pre-wrap text-foreground/90">
+             {announcement.content}
+          </AccordionContent>
+        </AccordionItem>
+      ))}
+    </Accordion>
   );
 }

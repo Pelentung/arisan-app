@@ -11,9 +11,10 @@ import { WinnerHistory } from '@/components/dashboard/winner-history';
 import { SidebarProvider, Sidebar, SidebarInset } from '@/components/ui/sidebar';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
 import { UserDashboard } from '@/components/dashboard/user-dashboard';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Megaphone, ClipboardList, Trophy } from 'lucide-react';
 import { AnnouncementsList } from '@/components/laporan/announcements-list';
 import { subscribeToData, unsubscribeAll } from '@/app/data';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 
 export default function LaporanPage() {
@@ -77,9 +78,53 @@ export default function LaporanPage() {
                 <h1 className="font-headline text-2xl font-bold tracking-tight text-foreground/90 sm:text-3xl">
                   Laporan, Riwayat & Pengumuman
                 </h1>
-                <AnnouncementsList />
-                <MonthlyReport />
-                <WinnerHistory />
+                
+                <div className="grid grid-cols-1 gap-6">
+                   <Card className="relative overflow-hidden border-yellow-500/50 border-t-4">
+                        <CardHeader className="flex flex-row items-start gap-4">
+                            <div className="p-2 bg-yellow-500/20 text-yellow-600 rounded-lg">
+                                <Megaphone className="w-6 h-6"/>
+                            </div>
+                            <div>
+                                <CardTitle>Pengumuman</CardTitle>
+                                <CardDescription>Informasi penting dan terkini dari pengurus arisan.</CardDescription>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <AnnouncementsList />
+                        </CardContent>
+                    </Card>
+
+                    <Card className="relative overflow-hidden border-blue-500/50 border-t-4">
+                         <CardHeader className="flex flex-row items-start gap-4">
+                            <div className="p-2 bg-blue-500/20 text-blue-600 rounded-lg">
+                                <ClipboardList className="w-6 h-6"/>
+                            </div>
+                            <div>
+                                <CardTitle>Laporan Bulanan</CardTitle>
+                                <CardDescription>Rangkuman laporan keuangan per bulan.</CardDescription>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <MonthlyReport />
+                        </CardContent>
+                    </Card>
+                    
+                    <Card className="relative overflow-hidden border-green-500/50 border-t-4">
+                        <CardHeader className="flex flex-row items-start gap-4">
+                             <div className="p-2 bg-green-500/20 text-green-600 rounded-lg">
+                                <Trophy className="w-6 h-6"/>
+                            </div>
+                            <div>
+                                <CardTitle>Anggota Yang Sudah Narik</CardTitle>
+                                <CardDescription>Daftar anggota yang sudah pernah memenangkan undian di setiap grup.</CardDescription>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <WinnerHistory />
+                        </CardContent>
+                    </Card>
+                </div>
               </main>
             </div>
           </SidebarInset>
