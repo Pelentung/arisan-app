@@ -47,13 +47,6 @@ export default function HomePage() {
     return () => unsubscribe();
   }, [auth]);
 
-  useEffect(() => {
-    if (user?.isAnonymous) {
-      router.push('/laporan');
-    }
-  }, [user, router]);
-
-
   const handleUserLogin = async () => {
     if (!email || !password) {
       toast({
@@ -90,7 +83,7 @@ export default function HomePage() {
         title: 'Login Tamu Berhasil',
         description: 'Anda masuk sebagai tamu.',
       });
-      // onAuthStateChanged will handle redirection
+      // onAuthStateChanged will handle the state update and dashboard rendering
     } catch (error) {
       toast({
         title: 'Login Gagal',
@@ -117,16 +110,11 @@ export default function HomePage() {
   }
   
   if (user && user.isAnonymous) {
-    // This state is temporary while redirecting, show a loader
-     return (
-          <div className="flex min-h-screen items-center justify-center bg-background">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className='ml-4'>Mengalihkan ke halaman laporan...</p>
-          </div>
-        );
+    // Guest user is logged in, show the guest dashboard
+    return <UserDashboard />;
   }
 
-  // If no user, or if the user is anonymous and redirection hasn't happened yet, show the login form
+  // If no user, show the login form
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
       <div className="mb-8 flex flex-col items-center text-center">
@@ -161,8 +149,7 @@ export default function HomePage() {
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="password">Kata Sandi</Label>
-            <Input
+            <Label htmlFor="password">Kata Sandi</Label>            <Input
               id="password"
               type="password"
               required
@@ -211,3 +198,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    

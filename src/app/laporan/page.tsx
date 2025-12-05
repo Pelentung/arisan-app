@@ -10,12 +10,11 @@ import { MonthlyReport } from '@/components/laporan/monthly-report';
 import { WinnerHistory } from '@/components/dashboard/winner-history';
 import { SidebarProvider, Sidebar, SidebarInset } from '@/components/ui/sidebar';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
-import { UserDashboard } from '@/components/dashboard/user-dashboard';
 import { Loader2, Megaphone, ClipboardList, Trophy } from 'lucide-react';
 import { AnnouncementsList } from '@/components/laporan/announcements-list';
 import { subscribeToData, unsubscribeAll } from '@/app/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-
+import { UserDashboard } from '@/components/dashboard/user-dashboard';
 
 export default function LaporanPage() {
   const { auth } = initializeFirebase();
@@ -30,9 +29,7 @@ export default function LaporanPage() {
     const authUnsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setIsLoading(false);
-       if (!currentUser) {
-         router.push('/');
-       }
+      // Let the component decide rendering, no redirect here for guests
     });
     
     // Subscribe to all necessary data for reports
@@ -59,9 +56,14 @@ export default function LaporanPage() {
     );
   }
 
+  // If no user, redirect to login which is now the root page
   if (!user) {
-    // This is a fallback, useEffect should already have redirected
-    return null;
+    router.push('/');
+    return (
+        <div className="flex min-h-screen items-center justify-center">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+    );
   }
 
   // Regular user (admin) view
@@ -132,6 +134,13 @@ export default function LaporanPage() {
       );
   }
 
-  // Guest user view
-  return <UserDashboard />;
+  // Guest user view is now handled on the main page. Redirect guests from here.
+  router.push('/');
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+    </div>
+  );
 }
+
+    

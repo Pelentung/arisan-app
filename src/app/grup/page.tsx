@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, PlusCircle, UserPlus, Users } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, UserPlus, Users, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -49,13 +49,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useFirestore } from '@/firebase';
+import { useFirestore, useAuth } from '@/firebase';
 import { collection, addDoc, doc, updateDoc, deleteDoc, arrayUnion, arrayRemove, writeBatch, getDocs, query } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Textarea } from '@/components/ui/textarea';
 import { SidebarProvider, Sidebar, SidebarInset } from '@/components/ui/sidebar';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
+import { onAuthStateChanged, type User } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
 
 // Dialog for Adding/Editing a single member
@@ -322,6 +324,11 @@ const AddMemberToGroupDialog = ({
 export default function ManageGroupsAndMembersPage() {
   const { toast } = useToast();
   const db = useFirestore();
+  const auth = useAuth();
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+
   const [members, setMembers] = useState<Member[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [isMemberDialogOpen, setIsMemberDialogOpen] = useState(false);
@@ -331,7 +338,20 @@ export default function ManageGroupsAndMembersPage() {
   );
 
   useEffect(() => {
-    if (!db) return;
+    if (!auth) return;
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser && currentUser.isAnonymous) {
+        router.push('/');
+      } else {
+        setUser(currentUser);
+      }
+      setIsLoadingAuth(false);
+    });
+    return () => unsubscribe();
+  }, [auth, router]);
+
+  useEffect(() => {
+    if (!db || !user) return;
     
     const seedInitialGroups = async () => {
         const groupsQuery = query(collection(db, 'groups'));
@@ -371,7 +391,7 @@ export default function ManageGroupsAndMembersPage() {
       unsubMembers();
       unsubGroups();
     };
-  }, [db]);
+  }, [db, user]);
 
   const displayedGroups = useMemo(() => {
     const groupOrder = ["Arisan Utama", "Arisan Uang Kaget Rp. 20.000", "Arisan Uang Kaget Rp. 10.000"];
@@ -508,6 +528,14 @@ export default function ManageGroupsAndMembersPage() {
         errorEmitter.emit('permission-error', permissionError);
     });
   }
+
+    if (isLoadingAuth || !user) {
+        return (
+        <div className="flex min-h-screen items-center justify-center">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+        );
+    }
 
   return (
     <SidebarProvider>
@@ -690,5 +718,7 @@ export default function ManageGroupsAndMembersPage() {
     </SidebarProvider>
   );
 }
+
+    
 
     

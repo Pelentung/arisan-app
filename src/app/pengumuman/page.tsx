@@ -20,7 +20,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import {
@@ -36,11 +36,13 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { collection, addDoc, doc, updateDoc, deleteDoc, serverTimestamp, Firestore } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
+import { useFirestore, useAuth } from '@/firebase';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { SidebarProvider, Sidebar, SidebarInset } from '@/components/ui/sidebar';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
+import { onAuthStateChanged, type User } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
 const AnnouncementDialog = ({
   announcement,
@@ -120,19 +122,38 @@ const AnnouncementDialog = ({
 export default function AnnouncementsPage() {
   const { toast } = useToast();
   const db = useFirestore();
+  const auth = useAuth();
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Partial<Announcement> | null>(null);
 
   useEffect(() => {
-    if (!db) return;
+    if (!auth) return;
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser && currentUser.isAnonymous) {
+        router.push('/');
+      } else {
+        setUser(currentUser);
+      }
+      setIsLoadingAuth(false);
+    });
+    return () => unsubscribe();
+  }, [auth, router]);
+
+
+  useEffect(() => {
+    if (!db || !user) return;
     const unsubscribe = subscribeToData(db, 'announcements', (data) => {
         setAnnouncements(data as Announcement[]);
         setIsLoading(false);
     });
     return () => unsubscribe();
-  }, [db]);
+  }, [db, user]);
 
   const handleAdd = () => {
     setSelectedAnnouncement({});
@@ -210,6 +231,14 @@ export default function AnnouncementsPage() {
     }
   };
 
+  if (isLoadingAuth || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <SidebarProvider>
       <Sidebar>
@@ -286,3 +315,5 @@ export default function AnnouncementsPage() {
     </SidebarProvider>
   );
 }
+
+    

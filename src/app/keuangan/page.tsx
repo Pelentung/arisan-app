@@ -20,7 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useFirestore } from '@/firebase';
+import { useFirestore, useAuth } from '@/firebase';
 import { doc, writeBatch, collection, getDocs, query, where, addDoc, updateDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -34,6 +34,8 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SidebarProvider, Sidebar, SidebarInset } from '@/components/ui/sidebar';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
+import { onAuthStateChanged, type User } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
 
 const formatCurrency = (amount: number) =>
@@ -226,6 +228,11 @@ const ExpenseDialog = ({ expense, isOpen, onClose, onSave }: { expense: Partial<
 export default function KeuanganPage() {
   const { toast } = useToast();
   const db = useFirestore();
+  const auth = useAuth();
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+
   // Global data
   const [allPayments, setAllPayments] = useState<DetailedPayment[]>([]);
   const [allMembers, setAllMembers] = useState<Member[]>([]);
@@ -249,9 +256,22 @@ export default function KeuanganPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const syncTracker = useRef<Set<string>>(new Set());
 
+  useEffect(() => {
+    if (!auth) return;
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser && currentUser.isAnonymous) {
+        router.push('/');
+      } else {
+        setUser(currentUser);
+      }
+      setIsLoadingAuth(false);
+    });
+    return () => unsubscribe();
+  }, [auth, router]);
+
   // Data fetching
   useEffect(() => {
-    if (!db) return;
+    if (!db || !user) return;
     
     const dataLoaded = { payments: false, members: false, groups: false, expenses: false };
     const checkAllDataLoaded = () => {
@@ -289,11 +309,11 @@ export default function KeuanganPage() {
     return () => { 
         unsubPayments(); unsubMembers(); unsubGroups(); unsubExpenses(); 
     };
-  }, [db, selectedGroup]); 
+  }, [db, user, selectedGroup]); 
   
   // Fetch contribution settings based on selected month
   useEffect(() => {
-    if (!db || !selectedMonth) return;
+    if (!db || !selectedMonth || !user) return;
 
     const fetchSettings = async () => {
         const docRef = doc(db, 'contributionSettings', selectedMonth);
@@ -319,7 +339,7 @@ export default function KeuanganPage() {
         }
     }
     fetchSettings();
-  }, [db, selectedMonth, toast]);
+  }, [db, selectedMonth, toast, user]);
 
   const ensurePaymentsExistForMonth = useCallback(async () => {
     if (!db || !selectedGroup || !mainArisanGroup || allMembers.length === 0 || !contributionSettings) return;
@@ -402,10 +422,10 @@ export default function KeuanganPage() {
   }, [db, selectedGroup, selectedMonth, allGroups, allMembers, mainArisanGroup, contributionSettings, toast]);
 
   useEffect(() => {
-    if (!isLoading && contributionSettings) {
+    if (!isLoading && contributionSettings && user) {
       ensurePaymentsExistForMonth();
     }
-  }, [isLoading, selectedGroup, selectedMonth, contributionSettings, ensurePaymentsExistForMonth]);
+  }, [isLoading, selectedGroup, selectedMonth, contributionSettings, ensurePaymentsExistForMonth, user]);
   
   // Filtered data for display
   const filteredPayments = useMemo(() => {
@@ -522,6 +542,14 @@ export default function KeuanganPage() {
             .catch((e) => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'expenses', operation: 'create', requestResourceData: expenseData })));
     }
   };
+
+  if (isLoadingAuth || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   const renderContent = () => {
     if (isLoading) {
