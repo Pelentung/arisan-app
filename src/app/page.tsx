@@ -81,12 +81,12 @@ export default function HomePage() {
       await signInAnonymously(auth);
       toast({
         title: 'Login Tamu Berhasil',
-        description: 'Anda masuk sebagai tamu.',
+        description: 'Anda masuk sebagai anggota.',
       });
     } catch (error) {
       toast({
         title: 'Login Gagal',
-        description: 'Tidak dapat masuk sebagai tamu saat ini.',
+        description: 'Tidak dapat masuk sebagai anggota saat ini.',
         variant: 'destructive',
       });
     } finally {
@@ -134,7 +134,7 @@ export default function HomePage() {
         <CardHeader>
           <CardTitle className="text-2xl">Login</CardTitle>
           <CardDescription>
-            Masuk sebagai Pengguna untuk mengelola data atau sebagai Tamu untuk
+            Masuk sebagai Admin untuk mengelola data atau sebagai Anggota untuk
             melihat laporan.
           </CardDescription>
         </CardHeader>
@@ -164,6 +164,7 @@ export default function HomePage() {
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
           <Button
+            variant="secondary"
             className="w-full"
             onClick={handleUserLogin}
             disabled={isLoggingIn}
@@ -173,7 +174,7 @@ export default function HomePage() {
             ) : (
               <UserIcon className="mr-2 h-4 w-4" />
             )}
-            Masuk sebagai Pengguna
+            Khusus Admin
           </Button>
           <div className="relative w-full">
             <div className="absolute inset-0 flex items-center">
@@ -184,7 +185,7 @@ export default function HomePage() {
             </div>
           </div>
           <Button
-            variant="secondary"
+            variant="default"
             className="w-full"
             onClick={handleGuestLogin}
             disabled={isLoggingIn}
@@ -194,7 +195,7 @@ export default function HomePage() {
             ) : (
               <ShieldQuestion className="mr-2 h-4 w-4" />
             )}
-            Masuk sebagai Tamu
+            Masuk sebagai Anggota
           </Button>
         </CardFooter>
       </Card>
