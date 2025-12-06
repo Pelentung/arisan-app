@@ -12,6 +12,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../ui
 import { RealTimeClock } from './real-time-clock';
 import Image from 'next/image';
 import { AllMembersList } from './all-members-list';
+import { CurrentWinnerCard } from './current-winner-card';
 
 
 export function UserDashboard() {
@@ -54,6 +55,8 @@ export function UserDashboard() {
                         <AnnouncementsList />
                     </CardContent>
                  </Card>
+
+                <CurrentWinnerCard />
 
                 <Card>
                     <CardHeader>
