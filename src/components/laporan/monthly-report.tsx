@@ -8,7 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ArrowDownCircle, ArrowUpCircle, Banknote, HeartHandshake, BookOpenCheck, Landmark } from 'lucide-react';
-import { format, getMonth, getYear, subMonths } from 'date-fns';
+import { format, getMonth, getYear, subMonths, isBefore, startOfMonth, endOfMonth } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { useFirestore } from '@/firebase';
 import { Badge } from '../ui/badge';
@@ -65,29 +65,22 @@ export function MonthlyReport() {
 
     const reportData = useMemo(() => {
         const [year, month] = selectedMonth.split('-').map(Number);
-        const selectedDate = new Date(year, month);
-        const prevMonthDate = subMonths(selectedDate, 1);
-        const prevMonthYear = getYear(prevMonthDate);
-        const prevMonth = getMonth(prevMonthDate);
+        const firstDayOfSelectedMonth = startOfMonth(new Date(year, month));
 
-        // --- Previous Month Calculations ---
-        const paymentsForPrevMonth = allPayments.filter(p => {
-            const paymentDueDate = new Date(p.dueDate);
-            return getYear(paymentDueDate) === prevMonthYear && getMonth(paymentDueDate) === prevMonth;
-        });
-        const expensesForPrevMonth = allExpenses.filter(e => {
-            const expenseDate = new Date(e.date);
-            return getYear(expenseDate) === prevMonthYear && getMonth(expenseDate) === prevMonth;
-        });
+        // --- Opening Balance Calculation (All transactions BEFORE the selected month) ---
+        const paymentsBeforeMonth = allPayments.filter(p => isBefore(new Date(p.dueDate), firstDayOfSelectedMonth));
+        const expensesBeforeMonth = allExpenses.filter(e => isBefore(new Date(e.date), firstDayOfSelectedMonth));
 
-        const prevMonthCashIn = paymentsForPrevMonth.reduce((sum, payment) => {
-            const paidContributionsTotal = Object.values(payment.contributions)
+        const totalIncomeBefore = paymentsBeforeMonth.reduce((sum, payment) => {
+             const paidContributionsTotal = Object.values(payment.contributions)
                 .filter(c => c.paid)
                 .reduce((contributionSum, c) => contributionSum + c.amount, 0);
             return sum + paidContributionsTotal;
         }, 0);
-        const prevMonthCashOut = expensesForPrevMonth.reduce((sum, e) => sum + e.amount, 0);
-        const openingBalance = prevMonthCashIn - prevMonthCashOut;
+        
+        const totalExpensesBefore = expensesBeforeMonth.reduce((sum, e) => sum + e.amount, 0);
+        const openingBalance = totalIncomeBefore - totalExpensesBefore;
+
 
         // --- Current Month Calculations ---
         const paymentsForMonth = allPayments.filter(p => {
@@ -166,7 +159,7 @@ export function MonthlyReport() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{formatCurrency(reportData.openingBalance)}</div>
-                        <p className="text-xs text-muted-foreground">Saldo dari bulan sebelumnya</p>
+                        <p className="text-xs text-muted-foreground">Akumulasi saldo s/d bulan lalu</p>
                     </CardContent>
                 </Card>
                 <Card>
@@ -237,3 +230,5 @@ export function MonthlyReport() {
     </div>
   );
 }
+
+    
