@@ -361,18 +361,30 @@ export default function KeuanganPage() {
   const filteredPayments = useMemo(() => {
     const group = allGroups.find(g => g.id === selectedGroup);
     if (!group) return [];
-
+  
     const [year, month] = selectedMonth.split('-').map(Number);
-    return localChanges
+    
+    const paymentsForMonthAndGroup = localChanges
       .filter(p => {
         const paymentDate = new Date(p.dueDate);
         return p.groupId === selectedGroup &&
                getYear(paymentDate) === year &&
                getMonth(paymentDate) === month &&
                group.memberIds.includes(p.memberId);
-      })
+      });
+  
+    // Deduplicate payments by memberId, taking the first one found.
+    const uniquePaymentsMap = new Map<string, DetailedPayment>();
+    for (const payment of paymentsForMonthAndGroup) {
+      if (!uniquePaymentsMap.has(payment.memberId)) {
+        uniquePaymentsMap.set(payment.memberId, payment);
+      }
+    }
+    
+    return Array.from(uniquePaymentsMap.values())
       .map(p => ({ ...p, member: allMembers.find(m => m.id === p.memberId) }))
-      .filter(p => p.member);
+      .filter(p => p.member); 
+      
   }, [localChanges, selectedGroup, selectedMonth, allMembers, allGroups]);
 
   const filteredExpenses = useMemo(() => {
@@ -536,11 +548,15 @@ export default function KeuanganPage() {
           let totalAmount: number;
 
           if (isMainGroup) {
-            // Force update main and cash amounts, preserve social contributions
-            updatedContributions.main.amount = fixedMainAmount;
-            updatedContributions.cash.amount = fixedCashAmount;
+             // Force update main and cash amounts, preserve social contributions
+            updatedContributions.main = { ...updatedContributions.main, amount: fixedMainAmount };
+            updatedContributions.cash = { ...updatedContributions.cash, amount: fixedCashAmount };
+             // Keep existing amounts for social funds if they exist
+            updatedContributions.sick = { ...updatedContributions.sick, amount: existingPayment.contributions.sick?.amount || 0 };
+            updatedContributions.bereavement = { ...updatedContributions.bereavement, amount: existingPayment.contributions.bereavement?.amount || 0 };
+            updatedContributions.others = { ...updatedContributions.others, amount: existingPayment.contributions.others?.amount || 0 };
           } else {
-            updatedContributions.main.amount = group.contributionAmount;
+            updatedContributions.main = { ...updatedContributions.main, amount: group.contributionAmount };
           }
           
           totalAmount = Object.values(updatedContributions).reduce((sum, c) => sum + (c?.amount || 0), 0);
