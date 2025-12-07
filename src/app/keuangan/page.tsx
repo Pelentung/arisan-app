@@ -214,11 +214,9 @@ const SimplePaymentTable = ({ payments, onStatusChange }: { payments: (DetailedP
     )
 }
 
-const ExpenseDialog = ({ expense, isOpen, onClose, onSave }: { expense: Partial<Expense> | null, isOpen: boolean, onClose: () => void, onSave: (expense: Omit<Expense, 'id'>, id?: string) => void }) => {
+const ExpenseDialog = ({ expense, isOpen, onClose, onSave, categories }: { expense: Partial<Expense> | null, isOpen: boolean, onClose: () => void, onSave: (expense: Omit<Expense, 'id'>, id?: string) => void, categories: string[] }) => {
   const [formData, setFormData] = useState<Partial<Expense> | null>(expense);
   const { toast } = useToast();
-
-  const expenseCategories = ['Sakit', 'Kemalangan', 'Talangan Kas', 'Lainnya'];
 
   useEffect(() => { setFormData(expense); }, [expense]);
 
@@ -251,7 +249,7 @@ const ExpenseDialog = ({ expense, isOpen, onClose, onSave }: { expense: Partial<
             <Label htmlFor="category" className="text-right">Kategori</Label>
             <Select value={formData?.category} onValueChange={handleCategoryChange}><SelectTrigger id="category" className="col-span-3"><SelectValue placeholder="Pilih Kategori" /></SelectTrigger>
             <SelectContent>
-                {expenseCategories.map((cat) => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                {categories.map((cat) => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
             </SelectContent>
             </Select>
           </div>
@@ -292,8 +290,6 @@ export default function KeuanganPage() {
   // Loading state
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
-
-  const isSyncingRef = useRef(false);
 
   useEffect(() => {
     if (!auth) return;
@@ -405,14 +401,13 @@ export default function KeuanganPage() {
   }, [db, selectedMonth, user, toast]);
 
 const ensurePaymentsExistForMonth = useCallback(async () => {
-    if (isSyncingRef.current || !db || !selectedGroup || !contributionSettings || allGroups.length === 0) {
-        return;
-    }
-
-    isSyncingRef.current = true;
     setIsGenerating(true);
     
     try {
+        if (!db || !selectedGroup || !contributionSettings || allGroups.length === 0) {
+            throw new Error("Data prasyarat (db, grup, atau pengaturan) belum siap untuk sinkronisasi.");
+        }
+
         await runTransaction(db, async (transaction) => {
             const group = allGroups.find(g => g.id === selectedGroup);
             if (!group) throw new Error("Grup tidak ditemukan");
@@ -493,6 +488,9 @@ const ensurePaymentsExistForMonth = useCallback(async () => {
                 }
             });
         });
+
+        toast({ title: "Sinkronisasi Iuran Selesai", description: "Data iuran telah diperbarui dan disinkronkan." });
+
     } catch (error: any) {
         console.error("Error ensuring payments exist:", error);
         toast({ title: "Sinkronisasi Gagal", description: error.message, variant: "destructive" });
@@ -501,17 +499,9 @@ const ensurePaymentsExistForMonth = useCallback(async () => {
         }
     } finally {
         setIsGenerating(false);
-        isSyncingRef.current = false;
-        toast({ title: "Sinkronisasi Iuran Selesai", description: "Data iuran telah diperbarui dan disinkronkan." });
     }
 }, [db, selectedGroup, selectedMonth, allGroups, mainArisanGroup, contributionSettings, toast]);
 
-useEffect(() => {
-    // Automatically run sync when dependencies are ready
-    if (!isGenerating && !isLoading && contributionSettings) {
-        ensurePaymentsExistForMonth();
-    }
-}, [selectedGroup, selectedMonth, contributionSettings, isLoading, isGenerating, ensurePaymentsExistForMonth]);
   
   // Filtered data for display
   const filteredPayments = useMemo(() => {
@@ -635,6 +625,26 @@ useEffect(() => {
     }
   };
 
+  const expenseCategories = useMemo(() => {
+    if (!contributionSettings) return ['Talangan Kas', 'Lainnya'];
+    const dynamicCats = Object.values(contributionLabels).filter(label => label !== 'Iuran Kas');
+    return ['Talangan Kas', ...dynamicCats, 'Lainnya'];
+  }, [contributionSettings, contributionLabels]);
+
+
+  const handleSync = () => {
+      if (!db || !selectedGroup || !contributionSettings) {
+          toast({
+              title: "Sinkronisasi Gagal",
+              description: "Data penting (grup atau pengaturan) belum termuat. Coba lagi sesaat.",
+              variant: "destructive",
+          });
+          return;
+      }
+      ensurePaymentsExistForMonth();
+  };
+
+
   if (isLoadingAuth || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -701,6 +711,10 @@ useEffect(() => {
                                     <SelectTrigger className="w-full sm:w-[280px]"><SelectValue placeholder="Pilih Grup" /></SelectTrigger>
                                     <SelectContent>{allGroups.map(g => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}</SelectContent>
                                     </Select>
+                                    <Button onClick={handleSync} disabled={isGenerating}>
+                                        {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                                        Sinkronkan Iuran
+                                    </Button>
                                     <Button onClick={savePaymentChanges} className="w-full sm:w-auto">Simpan Perubahan</Button>
                                 </div>
                             </CardHeader>
@@ -719,7 +733,7 @@ useEffect(() => {
                                 ) : (
                                     <div className="text-center text-muted-foreground py-8 h-60 flex flex-col justify-center items-center">
                                         <p>Tidak ada data iuran untuk ditampilkan.</p>
-                                        <p className="text-xs mt-2">Pastikan anggota sudah ditambahkan ke grup, lalu data akan tersinkronisasi secara otomatis.</p>
+                                        <p className="text-xs mt-2">Pilih grup dan klik "Sinkronkan Iuran" untuk membuat atau memperbarui catatan pembayaran bulan ini.</p>
                                     </div>
                                 )}
                             </CardContent>
@@ -777,8 +791,10 @@ useEffect(() => {
                     {renderContent()}
                 </main>
             </div>
-            {isExpenseDialogOpen && <ExpenseDialog expense={selectedExpense} isOpen={isExpenseDialogOpen} onClose={() => setIsExpenseDialogOpen(false)} onSave={handleSaveExpense} />}
+            {isExpenseDialogOpen && <ExpenseDialog expense={selectedExpense} isOpen={isExpenseDialogOpen} onClose={() => setIsExpenseDialogOpen(false)} onSave={handleSaveExpense} categories={expenseCategories} />}
         </SidebarInset>
     </SidebarProvider>
   );
 }
+
+    
