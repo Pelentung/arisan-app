@@ -357,6 +357,9 @@ export default function KeuanganPage() {
     setIsGenerating(true);
   
     try {
+      if (!db) { // Extra guard
+        throw new Error("Koneksi database tidak tersedia.");
+      }
       await runTransaction(db, async (transaction) => {
         const group = allGroups.find(g => g.id === selectedGroup);
         if (!group) throw new Error("Grup tidak ditemukan");
@@ -512,7 +515,7 @@ export default function KeuanganPage() {
   const socialContributionMapping: Record<string, string> = useMemo(() => {
     if (!contributionSettings) return {main: 'Iuran Utama', sick: 'Iuran Sakit', bereavement: 'Iuran Kemalangan'};
     const mapping: Record<string, string> = {
-        main: 'Iuran Utama',
+        main: 'Iuran Anggota',
         sick: 'Iuran Sakit',
         bereavement: 'Iuran Kemalangan',
     };
