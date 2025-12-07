@@ -74,14 +74,16 @@ const DetailedPaymentTable = ({ payments, onPaymentChange, onAmountChange, contr
 
     payments.forEach(payment => {
         contributionKeys.forEach(key => {
-            if (payment.contributions[key as keyof DetailedPayment['contributions']] && payment.contributions[key as keyof DetailedPayment['contributions']].paid) {
-                totals[key] += payment.contributions[key as keyof DetailedPayment['contributions']].amount;
+            const contribution = payment.contributions[key as keyof DetailedPayment['contributions']];
+            if (contribution?.paid) {
+                totals[key] += contribution.amount;
             }
         });
     });
-
-    grandTotal = Object.values(totals).reduce((sum, amount) => sum + amount, 0);
     
+    // Recalculate grandTotal based on paid contributions only
+    grandTotal = Object.values(totals).reduce((sum, amount) => sum + amount, 0);
+
     return { ...totals, grandTotal };
   }, [payments, contributionKeys]);
   
@@ -115,37 +117,35 @@ const DetailedPaymentTable = ({ payments, onPaymentChange, onAmountChange, contr
               
               {contributionKeys.map(type => {
                 const contribution = payment.contributions[type as keyof DetailedPayment['contributions']];
-                 if (contribution) {
+                 if (contribution !== undefined) { // Check for undefined instead of truthy
                     const label = contributionLabels[type] || type;
                     const isEditable = type === 'sick' || type === 'bereavement' || type === 'others';
-
-                    if (label) {
-                        return (
-                            <TableCell key={type}>
-                                <div className="flex items-center gap-2">
-                                    <Checkbox
-                                        id={`paid-${payment.id}-${type}`}
-                                        checked={contribution.paid}
-                                        onCheckedChange={checked => onPaymentChange(payment.id, type, !!checked)}
-                                        aria-label={`Tandai ${label} untuk ${payment.member?.name} lunas`}
+                    
+                    return (
+                        <TableCell key={type}>
+                            <div className="flex items-center gap-2">
+                                <Checkbox
+                                    id={`paid-${payment.id}-${type}`}
+                                    checked={contribution.paid}
+                                    onCheckedChange={checked => onPaymentChange(payment.id, type, !!checked)}
+                                    aria-label={`Tandai ${label} untuk ${payment.member?.name} lunas`}
+                                />
+                                {isEditable ? (
+                                    <Input
+                                        type="number"
+                                        value={contribution.amount}
+                                        onChange={(e) => onAmountChange(payment.id, type, Number(e.target.value))}
+                                        className="h-8 w-24"
+                                        placeholder="0"
                                     />
-                                    {isEditable ? (
-                                        <Input
-                                            type="number"
-                                            value={contribution.amount}
-                                            onChange={(e) => onAmountChange(payment.id, type, Number(e.target.value))}
-                                            className="h-8 w-24"
-                                            placeholder="0"
-                                        />
-                                    ) : (
-                                        <label htmlFor={`paid-${payment.id}-${type}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                            {formatCurrency(contribution.amount)}
-                                        </label>
-                                    )}
-                                </div>
-                            </TableCell>
-                        )
-                    }
+                                ) : (
+                                    <label htmlFor={`paid-${payment.id}-${type}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                        {formatCurrency(contribution.amount)}
+                                    </label>
+                                )}
+                            </div>
+                        </TableCell>
+                    )
                  }
                  return <TableCell key={type}></TableCell>;
               })}
@@ -373,7 +373,7 @@ export default function KeuanganPage() {
                group.memberIds.includes(p.memberId);
       });
   
-    // Deduplicate payments by memberId, taking the first one found.
+    // Deduplicate payments by memberId, taking the first one found for UI display.
     const uniquePaymentsMap = new Map<string, DetailedPayment>();
     for (const payment of paymentsForMonthAndGroup) {
       if (!uniquePaymentsMap.has(payment.memberId)) {
@@ -383,7 +383,8 @@ export default function KeuanganPage() {
     
     return Array.from(uniquePaymentsMap.values())
       .map(p => ({ ...p, member: allMembers.find(m => m.id === p.memberId) }))
-      .filter(p => p.member); 
+      .filter(p => p.member)
+      .sort((a, b) => a.member!.name.localeCompare(b.member!.name));
       
   }, [localChanges, selectedGroup, selectedMonth, allMembers, allGroups]);
 
@@ -424,9 +425,9 @@ export default function KeuanganPage() {
           prev.map(p => {
               if (p.id !== paymentId) return p;
 
-              const updatedContributions = {
+              const updatedContributions: DetailedPayment['contributions'] = {
                   ...p.contributions,
-                  [contributionType]: { ...p.contributions[contributionType as keyof DetailedPayment['contributions']], amount: amount },
+                  [contributionType]: { ...(p.contributions[contributionType as keyof DetailedPayment['contributions']] || { paid: false }), amount: amount },
               };
               
               const newTotalAmount = Object.values(updatedContributions).reduce((sum, c) => sum + (c?.amount || 0), 0);
@@ -513,6 +514,9 @@ export default function KeuanganPage() {
     }
 
     setIsGenerating(true);
+    let createdCount = 0;
+    let updatedCount = 0;
+    let deletedCount = 0;
 
     try {
       const group = allGroups.find(g => g.id === selectedGroup);
@@ -527,17 +531,51 @@ export default function KeuanganPage() {
       
       const batch = writeBatch(db);
 
-      // Fetch existing payments for the selected month and group
+      // 1. Fetch ALL existing payments for the selected month and group
       const paymentsQuery = query(
         collection(db, 'payments'),
         where('groupId', '==', selectedGroup),
         where('dueDate', '==', dueDate)
       );
       const querySnapshot = await getDocs(paymentsQuery);
-      const existingPayments = new Map(querySnapshot.docs.map(doc => [doc.data().memberId, { id: doc.id, ...doc.data() as DetailedPayment }]));
+      const existingPaymentsDocs = querySnapshot.docs;
 
+      // 2. Group payments by memberId
+      const paymentsByMember = new Map<string, (DetailedPayment & { id: string })[]>();
+      existingPaymentsDocs.forEach(doc => {
+          const payment = { id: doc.id, ...doc.data() } as (DetailedPayment & { id: string });
+          if (!paymentsByMember.has(payment.memberId)) {
+              paymentsByMember.set(payment.memberId, []);
+          }
+          paymentsByMember.get(payment.memberId)!.push(payment);
+      });
+
+      // 3. Handle duplicates: decide which one to keep and delete others
+      for (const [memberId, payments] of paymentsByMember.entries()) {
+          if (payments.length > 1) {
+              // Sort to find the 'best' one to keep (e.g., paid, or highest total amount)
+              payments.sort((a, b) => {
+                  if (a.status === 'Paid' && b.status !== 'Paid') return -1;
+                  if (b.status === 'Paid' && a.status !== 'Paid') return 1;
+                  return b.totalAmount - a.totalAmount;
+              });
+
+              const paymentToKeep = payments[0];
+              const paymentsToDelete = payments.slice(1);
+              
+              paymentsToDelete.forEach(p => {
+                  batch.delete(doc(db, 'payments', p.id));
+                  deletedCount++;
+              });
+              // Update the map to only contain the payment we're keeping
+              paymentsByMember.set(memberId, [paymentToKeep]);
+          }
+      }
+
+      // 4. Iterate over group members to create or update payments
       for (const memberId of group.memberIds) {
-        const existingPayment = existingPayments.get(memberId);
+        const existingPaymentArr = paymentsByMember.get(memberId);
+        const existingPayment = existingPaymentArr ? existingPaymentArr[0] : undefined;
         
         if (existingPayment) {
           // --- UPDATE EXISTING PAYMENT ---
@@ -547,22 +585,35 @@ export default function KeuanganPage() {
           };
           let totalAmount: number;
 
+          let hasChanges = false;
           if (isMainGroup) {
-             // Force update main and cash amounts, preserve social contributions
-            updatedContributions.main = { ...updatedContributions.main, amount: fixedMainAmount };
-            updatedContributions.cash = { ...updatedContributions.cash, amount: fixedCashAmount };
-             // Keep existing amounts for social funds if they exist
-            updatedContributions.sick = { ...updatedContributions.sick, amount: existingPayment.contributions.sick?.amount || 0 };
-            updatedContributions.bereavement = { ...updatedContributions.bereavement, amount: existingPayment.contributions.bereavement?.amount || 0 };
-            updatedContributions.others = { ...updatedContributions.others, amount: existingPayment.contributions.others?.amount || 0 };
+              if (updatedContributions.main.amount !== fixedMainAmount) {
+                  updatedContributions.main.amount = fixedMainAmount;
+                  hasChanges = true;
+              }
+              if (updatedContributions.cash.amount !== fixedCashAmount) {
+                  updatedContributions.cash.amount = fixedCashAmount;
+                   hasChanges = true;
+              }
+              // Ensure social funds exist
+              updatedContributions.sick = updatedContributions.sick || { amount: 0, paid: false };
+              updatedContributions.bereavement = updatedContributions.bereavement || { amount: 0, paid: false };
+              updatedContributions.others = updatedContributions.others || { amount: 0, paid: false };
           } else {
-            updatedContributions.main = { ...updatedContributions.main, amount: group.contributionAmount };
+             if (updatedContributions.main.amount !== group.contributionAmount) {
+                updatedContributions.main.amount = group.contributionAmount;
+                hasChanges = true;
+             }
           }
           
-          totalAmount = Object.values(updatedContributions).reduce((sum, c) => sum + (c?.amount || 0), 0);
-          batch.update(paymentRef, { contributions: updatedContributions, totalAmount });
+          if(hasChanges) {
+              totalAmount = Object.values(updatedContributions).reduce((sum, c) => sum + (c?.amount || 0), 0);
+              batch.update(paymentRef, { contributions: updatedContributions, totalAmount });
+              updatedCount++;
+          }
         } else {
           // --- CREATE NEW PAYMENT ---
+          createdCount++;
           let contributions: DetailedPayment['contributions'];
           let totalAmount: number;
 
@@ -602,7 +653,7 @@ export default function KeuanganPage() {
 
       toast({
         title: "Sinkronisasi Selesai",
-        description: `Iuran untuk ${format(parse(selectedMonth, 'yyyy-M', new Date()), 'MMMM yyyy', { locale: id })} telah berhasil dibuat/diperbarui.`
+        description: `Iuran untuk ${format(parse(selectedMonth, 'yyyy-M', new Date()), 'MMMM yyyy', { locale: id })}: ${createdCount} dibuat, ${updatedCount} diperbarui, ${deletedCount} duplikat dihapus.`
       });
 
     } catch (e: any) {
@@ -702,7 +753,7 @@ export default function KeuanganPage() {
                                 ) : (
                                     <div className="text-center text-muted-foreground py-8 h-60 flex flex-col justify-center items-center">
                                         <p>Tidak ada data iuran untuk bulan dan grup ini.</p>
-                                        <p className="text-xs mt-2">Klik tombol "Buat/Perbarui Iuran Bulan Ini" untuk membuat data.</p>
+                                        <p className="text-xs mt-2">Klik tombol "Buat/Perbarui Iuran Bulan Ini" untuk membuat atau membersihkan data.</p>
                                     </div>
                                 )}
                             </CardContent>
