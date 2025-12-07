@@ -61,13 +61,8 @@ const generateMonthOptions = () => {
 // --- Detailed Table for Main Group ---
 const DetailedPaymentTable = ({ payments, onPaymentChange, onAmountChange, contributionLabels }: { payments: (DetailedPayment & { member?: Member })[], onPaymentChange: (paymentId: string, contributionType: keyof DetailedPayment['contributions'], isPaid: boolean) => void, onAmountChange: (paymentId: string, contributionType: string, amount: number) => void, contributionLabels: Record<string, string>}) => {
   const contributionKeys = useMemo(() => {
-    const preferredOrder = ['main', 'cash', 'sick', 'bereavement', 'others'];
-    if (!payments.length || !payments[0].contributions) return preferredOrder;
-    
-    const allKeys = Object.keys(payments[0].contributions);
-    
-    return preferredOrder.filter(key => allKeys.includes(key));
-  }, [payments]);
+    return ['main', 'cash', 'sick', 'bereavement', 'others'];
+  }, []);
 
   const columnTotals = useMemo(() => {
     const totals = contributionKeys.reduce((acc, key) => {
@@ -360,7 +355,7 @@ export default function KeuanganPage() {
     return () => { 
         unsubPayments(); unsubMembers(); unsubGroups(); unsubExpenses(); 
     };
-  }, [db, user, selectedMonth]); 
+  }, [db, user]); 
 
   // Filtered data for display
   const filteredPayments = useMemo(() => {
@@ -499,7 +494,7 @@ export default function KeuanganPage() {
     }
   };
 
- const handleSync = useCallback(async () => {
+  const handleSync = useCallback(async () => {
     if (!db || !selectedGroup) {
       toast({ title: "Sinkronisasi Gagal", description: "Database atau grup belum siap.", variant: "destructive" });
       return;
@@ -520,6 +515,7 @@ export default function KeuanganPage() {
       
       const batch = writeBatch(db);
 
+      // Fetch existing payments for the selected month and group
       const paymentsQuery = query(
         collection(db, 'payments'),
         where('groupId', '==', selectedGroup),
@@ -531,34 +527,49 @@ export default function KeuanganPage() {
       for (const memberId of group.memberIds) {
         const existingPayment = existingPayments.get(memberId);
         
-        let contributions: DetailedPayment['contributions'];
-        let totalAmount: number;
-
-        if (isMainGroup) {
-          const updatedContributions = {
-            main: { amount: fixedMainAmount, paid: existingPayment?.contributions.main.paid || false },
-            cash: { amount: fixedCashAmount, paid: existingPayment?.contributions.cash.paid || false },
-            sick: { amount: existingPayment?.contributions.sick?.amount || 0, paid: existingPayment?.contributions.sick?.paid || false },
-            bereavement: { amount: existingPayment?.contributions.bereavement?.amount || 0, paid: existingPayment?.contributions.bereavement?.paid || false },
-            others: { amount: existingPayment?.contributions.others?.amount || 0, paid: existingPayment?.contributions.others?.paid || false },
-          };
-          contributions = updatedContributions;
-          totalAmount = Object.values(contributions).reduce((sum, c) => sum + c.amount, 0);
-        } else {
-          contributions = {
-            main: { amount: group.contributionAmount, paid: existingPayment?.contributions.main.paid || false },
-            cash: { amount: 0, paid: true },
-            sick: { amount: 0, paid: true },
-            bereavement: { amount: 0, paid: true },
-            others: { amount: 0, paid: true },
-          };
-          totalAmount = group.contributionAmount;
-        }
-
         if (existingPayment) {
+          // --- UPDATE EXISTING PAYMENT ---
           const paymentRef = doc(db, 'payments', existingPayment.id);
-          batch.update(paymentRef, { contributions, totalAmount });
+          const updatedContributions: DetailedPayment['contributions'] = {
+            ...existingPayment.contributions,
+          };
+          let totalAmount: number;
+
+          if (isMainGroup) {
+            // Force update main and cash amounts, preserve social contributions
+            updatedContributions.main.amount = fixedMainAmount;
+            updatedContributions.cash.amount = fixedCashAmount;
+          } else {
+            updatedContributions.main.amount = group.contributionAmount;
+          }
+          
+          totalAmount = Object.values(updatedContributions).reduce((sum, c) => sum + (c?.amount || 0), 0);
+          batch.update(paymentRef, { contributions: updatedContributions, totalAmount });
         } else {
+          // --- CREATE NEW PAYMENT ---
+          let contributions: DetailedPayment['contributions'];
+          let totalAmount: number;
+
+          if (isMainGroup) {
+            contributions = {
+              main: { amount: fixedMainAmount, paid: false },
+              cash: { amount: fixedCashAmount, paid: false },
+              sick: { amount: 0, paid: false },
+              bereavement: { amount: 0, paid: false },
+              others: { amount: 0, paid: false },
+            };
+            totalAmount = fixedMainAmount + fixedCashAmount;
+          } else {
+            contributions = {
+              main: { amount: group.contributionAmount, paid: false },
+              cash: { amount: 0, paid: true }, // Not applicable for non-main groups
+              sick: { amount: 0, paid: true },
+              bereavement: { amount: 0, paid: true },
+              others: { amount: 0, paid: true },
+            };
+            totalAmount = group.contributionAmount;
+          }
+
           const newPaymentRef = doc(collection(db, 'payments'));
           batch.set(newPaymentRef, {
             memberId,

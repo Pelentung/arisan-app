@@ -1,3 +1,4 @@
+'use client';
 
 import { collection, onSnapshot, query, Firestore } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -68,15 +69,6 @@ export interface OtherContribution {
     id: string;
     description: string;
     amount: number;
-}
-
-// This interface is no longer used but kept for reference if needed in future
-export interface ContributionSettings {
-    main: number;
-    cash: number;
-    sick: number;
-    bereavement: number;
-    others: OtherContribution[];
 }
 
 // Global array to hold all active listeners
