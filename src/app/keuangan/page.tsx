@@ -66,14 +66,7 @@ const DetailedPaymentTable = ({ payments, onPaymentChange, contributionLabels }:
     
     const allKeys = Object.keys(payments[0].contributions);
     
-    return allKeys.sort((a, b) => {
-        const indexA = preferredOrder.indexOf(a);
-        const indexB = preferredOrder.indexOf(b);
-        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-        if (indexA !== -1) return -1;
-        if (indexB !== -1) return 1;
-        return a.localeCompare(b);
-    });
+    return preferredOrder.filter(key => allKeys.includes(key));
   }, [payments]);
 
   const columnTotals = useMemo(() => {
@@ -490,7 +483,7 @@ export default function KeuanganPage() {
 
       const isMainGroup = group.name === 'Arisan Utama';
       const fixedMainAmount = isMainGroup ? 90000 : group.contributionAmount;
-      const fixedCashAmount = isMainGroup ? 50000 : 0;
+      const fixedCashAmount = isMainGroup ? 10000 : 0;
       
       const batch = writeBatch(db);
 
