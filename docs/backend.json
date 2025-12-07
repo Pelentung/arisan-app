@@ -246,10 +246,6 @@
         "category": {
           "type": "string",
           "description": "The category of the expense, which should correspond to a contribution type name."
-        },
-        "sourcePaymentId": {
-            "type": "string",
-            "description": "Identifier to link an auto-generated expense to its source payment contribution."
         }
       },
       "required": [

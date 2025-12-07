@@ -53,7 +53,6 @@ export interface Expense {
     description: string;
     amount: number;
     category: string;
-    sourcePaymentId?: string; // To link auto-generated expenses
 }
 
 export interface Announcement {

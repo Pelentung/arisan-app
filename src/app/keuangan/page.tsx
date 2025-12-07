@@ -198,7 +198,7 @@ const ExpenseDialog = ({ expense, isOpen, onClose, onSave, categories }: { expen
         return;
     }
     const newExpenseData: Omit<Expense, 'id'> = {
-      description: formData.description, date: formData.date, amount: formData.amount, category: formData.category, sourcePaymentId: formData.sourcePaymentId
+      description: formData.description, date: formData.date, amount: formData.amount, category: formData.category
     };
     onSave(newExpenseData, formData.id);
   };
@@ -364,6 +364,9 @@ export default function KeuanganPage() {
         }
         
         await runTransaction(db, async (transaction) => {
+            if (!db || !selectedGroup) {
+              throw new Error("Koneksi database atau grup yang dipilih tidak tersedia.");
+            }
             const group = allGroups.find(g => g.id === selectedGroup);
             if (!group) throw new Error("Grup tidak ditemukan");
 
@@ -515,29 +518,12 @@ export default function KeuanganPage() {
     return labels;
   }, [contributionSettings]);
 
-  const socialContributionMapping: Record<string, string> = useMemo(() => {
-    if (!contributionSettings) return {main: 'Iuran Utama', sick: 'Iuran Sakit', bereavement: 'Iuran Kemalangan'};
-    const mapping: Record<string, string> = {
-        main: 'Iuran Anggota',
-        sick: 'Iuran Sakit',
-        bereavement: 'Iuran Kemalangan',
-    };
-    contributionSettings.others.forEach(other => {
-        if(other.description){ // Ensure description exists
-            mapping[other.id] = other.description;
-        }
-    });
-    return mapping;
-  }, [contributionSettings]);
+  const expenseCategories = useMemo(() => {
+    return ["Talangan Kas", "Sakit", "Kemalangan", "Lainnya"];
+  }, []);
 
   // Payment handlers
-  const handleDetailedPaymentChange = async (paymentId: string, contributionType: keyof DetailedPayment['contributions'], isPaid: boolean) => {
-    if (!db) return;
-    const payment = allPayments.find(p => p.id === paymentId);
-    const member = allMembers.find(m => m.id === payment?.memberId);
-    
-    if (!payment || !member) return;
-
+  const handleDetailedPaymentChange = (paymentId: string, contributionType: keyof DetailedPayment['contributions'], isPaid: boolean) => {
     setLocalChanges(prev =>
       prev.map(p => {
         if (p.id !== paymentId) return p;
@@ -549,53 +535,16 @@ export default function KeuanganPage() {
         
         const allContributionsPaid = Object.values(updatedContributions).every(c => c.paid);
         
-        const newTotalAmount = Object.values(updatedContributions).reduce((sum: number, c: any) => sum + c.amount, 0);
+        const newTotalAmount = Object.values(updatedContributions).reduce((sum: number, c: any) => sum + (c.paid ? c.amount : 0), 0);
 
         return { 
           ...p, 
           contributions: updatedContributions,
           status: allContributionsPaid ? 'Paid' : 'Unpaid',
-          totalAmount: newTotalAmount // Update total amount
+          totalAmount: p.totalAmount // Keep original total amount, paid amount is what matters for cashflow
         };
       })
     );
-
-    const category = socialContributionMapping[contributionType as string];
-    if (category && contributionType !== 'cash') {
-        try {
-            if (!db) {
-                toast({ title: 'Gagal Sinkronisasi', description: 'Koneksi database tidak tersedia.', variant: 'destructive'});
-                return;
-            }
-            await runTransaction(db, async (transaction) => {
-                const sourcePaymentCompositeId = `${paymentId}_${contributionType}`;
-                const expensesQuery = query(collection(db, "expenses"), where("sourcePaymentId", "==", sourcePaymentCompositeId));
-                const querySnapshot = await transaction.get(expensesQuery);
-
-                if (isPaid) {
-                    if (querySnapshot.empty) {
-                        const newExpenseRef = doc(collection(db, 'expenses'));
-                        transaction.set(newExpenseRef, {
-                            date: payment.dueDate,
-                            description: `${category} dari ${member.name}`,
-                            amount: payment.contributions[contributionType].amount,
-                            category: category,
-                            sourcePaymentId: sourcePaymentCompositeId
-                        });
-                    }
-                } else {
-                    if (!querySnapshot.empty) {
-                        querySnapshot.forEach(doc => {
-                            transaction.delete(doc.ref);
-                        });
-                    }
-                }
-            });
-        } catch (error) {
-            console.error("Transaction failed: ", error);
-            toast({ title: 'Gagal Sinkronisasi Pengeluaran', description: 'Terjadi kesalahan saat membuat atau menghapus pengeluaran otomatis.', variant: 'destructive'});
-        }
-    }
   };
 
   const handleSimpleStatusChange = (paymentId: string, newStatus: DetailedPayment['status']) => {
@@ -624,7 +573,8 @@ export default function KeuanganPage() {
     const batch = writeBatch(db);
     changesToSave.forEach(payment => {
         const { id, member, ...paymentData } = payment;
-        batch.update(doc(db, "payments", id), paymentData);
+        const recalculatedTotal = Object.values(paymentData.contributions).reduce((sum, c: any) => sum + c.amount, 0);
+        batch.update(doc(db, "payments", id), {...paymentData, totalAmount: recalculatedTotal });
     });
     
     try {
@@ -774,12 +724,12 @@ export default function KeuanganPage() {
                                         <TableCell><Badge variant={expense.category === 'Iuran Sakit' ? 'destructive' : expense.category === 'Iuran Kemalangan' ? 'outline' : 'secondary'}>{expense.category}</Badge></TableCell>
                                         <TableCell>{formatCurrency(expense.amount)}</TableCell>
                                         <TableCell className="text-right">
-                                            {!expense.sourcePaymentId && ( // Only allow edit/delete for manual expenses
+                                            
                                                 <>
                                                 <Button variant="ghost" size="icon" onClick={() => handleEditExpense(expense)}><Edit className="h-4 w-4" /></Button>
                                                 <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeleteExpense(expense.id)}><MoreHorizontal className="h-4 w-4" /></Button>
                                                 </>
-                                            )}
+                                            
                                         </TableCell>
                                         </TableRow>
                                     )) : <TableRow><TableCell colSpan={5} className="text-center h-24">Tidak ada data pengeluaran untuk bulan ini.</TableCell></TableRow>}
@@ -806,7 +756,7 @@ export default function KeuanganPage() {
                     {renderContent()}
                 </main>
             </div>
-            {isExpenseDialogOpen && <ExpenseDialog expense={selectedExpense} isOpen={isExpenseDialogOpen} onClose={() => setIsExpenseDialogOpen(false)} onSave={handleSaveExpense} categories={Object.values(contributionLabels)} />}
+            {isExpenseDialogOpen && <ExpenseDialog expense={selectedExpense} isOpen={isExpenseDialogOpen} onClose={() => setIsExpenseDialogOpen(false)} onSave={handleSaveExpense} categories={expenseCategories} />}
         </SidebarInset>
     </SidebarProvider>
   );
