@@ -63,7 +63,7 @@ const DetailedPaymentTable = ({ payments, onPaymentChange, contributionLabels }:
   const contributionKeys = useMemo(() => {
     if (!payments.length || !payments[0].contributions) return [];
     
-    const preferredOrder = ['main', 'cash', 'sick', 'bereavement'];
+    const preferredOrder = ['main', 'cash', 'sick', 'bereavement', 'others'];
     const allKeys = Object.keys(payments[0].contributions);
     
     return allKeys.sort((a, b) => {
@@ -488,6 +488,10 @@ export default function KeuanganPage() {
 
             const [year, month] = selectedMonth.split('-').map(Number);
             const dueDate = format(new Date(year, month, 1), 'yyyy-MM-dd');
+            
+            const isMainGroup = group.name === 'Arisan Utama';
+            const fixedMainAmount = 90000;
+            const fixedCashAmount = 50000;
 
             const paymentsQuery = query(
                 collection(db, 'payments'), 
@@ -495,44 +499,42 @@ export default function KeuanganPage() {
                 where('dueDate', '==', dueDate)
             );
             const querySnapshot = await transaction.get(paymentsQuery);
-            const existingMemberIds = new Set(querySnapshot.docs.map(doc => doc.data().memberId));
+            const existingPayments = new Map(querySnapshot.docs.map(doc => [doc.data().memberId, {id: doc.id, ...doc.data() as DetailedPayment}]));
 
             const membersInGroup = group.memberIds;
-            const membersWithoutPayment = membersInGroup.filter(memberId => !existingMemberIds.has(memberId));
             
-            if (membersWithoutPayment.length > 0) {
-                const isMainGroup = group.name === 'Arisan Utama';
+            for (const memberId of membersInGroup) {
+                const existingPayment = existingPayments.get(memberId);
+
+                let contributions: DetailedPayment['contributions'] = {
+                    main: { amount: 0, paid: false },
+                    cash: { amount: 0, paid: false },
+                    sick: { amount: 0, paid: false },
+                    bereavement: { amount: 0, paid: false },
+                    others: { amount: 0, paid: false },
+                };
+                let totalAmount = 0;
+
+                if (isMainGroup) {
+                    contributions.main = { amount: fixedMainAmount, paid: false };
+                    contributions.cash = { amount: fixedCashAmount, paid: false };
+                    // Manual contributions are kept if they exist, otherwise 0
+                    contributions.sick = { amount: existingPayment?.contributions.sick?.amount || 0, paid: existingPayment?.contributions.sick?.paid || false };
+                    contributions.bereavement = { amount: existingPayment?.contributions.bereavement?.amount || 0, paid: existingPayment?.contributions.bereavement?.paid || false };
+                    contributions.others = { amount: existingPayment?.contributions.others?.amount || 0, paid: existingPayment?.contributions.others?.paid || false };
+                } else {
+                    contributions.main = { amount: group.contributionAmount, paid: false };
+                }
                 
-                membersWithoutPayment.forEach(memberId => {
+                totalAmount = Object.values(contributions).reduce((sum, c) => sum + c.amount, 0);
+
+                if (existingPayment) {
+                    // Update existing payment if amounts are incorrect
+                    const paymentRef = doc(db, 'payments', existingPayment.id);
+                    transaction.update(paymentRef, { contributions, totalAmount });
+                } else {
+                    // Create new payment for member not in list
                     const newPaymentRef = doc(collection(db, 'payments'));
-                    
-                    let contributions: DetailedPayment['contributions'] = {
-                         main: { amount: 0, paid: false },
-                         cash: { amount: 0, paid: false },
-                         sick: { amount: 0, paid: false },
-                         bereavement: { amount: 0, paid: false },
-                         others: { amount: 0, paid: false },
-                    };
-                    let totalAmount = 0;
-
-                    if (isMainGroup) {
-                        contributions.main = { amount: 90000, paid: false };
-                        contributions.cash = { amount: 50000, paid: false };
-                        // Sick, bereavement, and others are manual, so they are 0 by default
-                        totalAmount = Object.values(contributions).reduce((sum, c) => sum + c.amount, 0);
-                    } else {
-                        contributions.main = { amount: group.contributionAmount, paid: false };
-                        // Other groups only have a main contribution
-                        contributions = {
-                            main: { amount: group.contributionAmount, paid: false },
-                            cash: { amount: 0, paid: false },
-                            sick: { amount: 0, paid: false },
-                            bereavement: { amount: 0, paid: false },
-                            others: { amount: 0, paid: false },
-                        };
-                        totalAmount = group.contributionAmount;
-                    }
-
                     transaction.set(newPaymentRef, {
                         memberId,
                         groupId: selectedGroup,
@@ -541,13 +543,13 @@ export default function KeuanganPage() {
                         totalAmount,
                         status: 'Unpaid',
                     });
-                });
+                }
             }
         });
 
         toast({
             title: "Sinkronisasi Selesai",
-            description: `Iuran untuk ${format(parse(selectedMonth, 'yyyy-M', new Date()), 'MMMM yyyy', {locale: id})} telah berhasil dibuat/diverifikasi.`
+            description: `Iuran untuk ${format(parse(selectedMonth, 'yyyy-M', new Date()), 'MMMM yyyy', {locale: id})} telah berhasil dibuat/diperbarui.`
         });
       } catch (e: any) {
          toast({ title: "Sinkronisasi Gagal", description: e.message || "Terjadi kesalahan.", variant: "destructive" });
