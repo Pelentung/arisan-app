@@ -583,16 +583,15 @@ export default function KeuanganPage() {
           const updatedContributions: DetailedPayment['contributions'] = {
             ...existingPayment.contributions,
           };
-          let totalAmount: number;
-
+          
           let hasChanges = false;
           if (isMainGroup) {
-              if (updatedContributions.main.amount !== fixedMainAmount) {
-                  updatedContributions.main.amount = fixedMainAmount;
+              if (!updatedContributions.main || updatedContributions.main.amount !== fixedMainAmount) {
+                  updatedContributions.main = { ...updatedContributions.main, amount: fixedMainAmount };
                   hasChanges = true;
               }
-              if (updatedContributions.cash.amount !== fixedCashAmount) {
-                  updatedContributions.cash.amount = fixedCashAmount;
+              if (!updatedContributions.cash || updatedContributions.cash.amount !== fixedCashAmount) {
+                  updatedContributions.cash = { ...updatedContributions.cash, amount: fixedCashAmount };
                    hasChanges = true;
               }
               // Ensure social funds exist
@@ -600,14 +599,14 @@ export default function KeuanganPage() {
               updatedContributions.bereavement = updatedContributions.bereavement || { amount: 0, paid: false };
               updatedContributions.others = updatedContributions.others || { amount: 0, paid: false };
           } else {
-             if (updatedContributions.main.amount !== group.contributionAmount) {
-                updatedContributions.main.amount = group.contributionAmount;
+             if (!updatedContributions.main || updatedContributions.main.amount !== group.contributionAmount) {
+                updatedContributions.main = { ...updatedContributions.main, amount: group.contributionAmount };
                 hasChanges = true;
              }
           }
           
           if(hasChanges) {
-              totalAmount = Object.values(updatedContributions).reduce((sum, c) => sum + (c?.amount || 0), 0);
+              const totalAmount = Object.values(updatedContributions).reduce((sum, c) => sum + (c?.amount || 0), 0);
               batch.update(paymentRef, { contributions: updatedContributions, totalAmount });
               updatedCount++;
           }
