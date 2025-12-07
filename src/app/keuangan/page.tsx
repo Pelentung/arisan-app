@@ -357,10 +357,12 @@ export default function KeuanganPage() {
     setIsGenerating(true);
   
     try {
-      if (!db) { // Extra guard
+      if (!db) { 
         throw new Error("Koneksi database tidak tersedia.");
       }
       await runTransaction(db, async (transaction) => {
+        if (!selectedGroup) throw new Error("Grup belum dipilih.");
+        
         const group = allGroups.find(g => g.id === selectedGroup);
         if (!group) throw new Error("Grup tidak ditemukan");
 
@@ -557,7 +559,6 @@ export default function KeuanganPage() {
       })
     );
 
-    // Auto-create/delete expense logic for social contributions (not cash)
     const category = socialContributionMapping[contributionType as string];
     if (category && contributionType !== 'cash') {
         try {
