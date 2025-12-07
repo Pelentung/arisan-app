@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import type { DetailedPayment, Member, Group, ContributionSettings, Expense } from '@/app/data';
 import { subscribeToData } from '@/app/data';
 import { Header } from '@/components/layout/header';
@@ -59,7 +60,11 @@ const generateMonthOptions = () => {
 
 // --- Detailed Table for Main Group ---
 const DetailedPaymentTable = ({ payments, onPaymentChange, contributionLabels }: { payments: (DetailedPayment & { member?: Member })[], onPaymentChange: (paymentId: string, contributionType: keyof DetailedPayment['contributions'], isPaid: boolean) => void, contributionLabels: Record<string, string>}) => {
-  const contributionKeys = Object.keys(contributionLabels);
+  const contributionKeys = useMemo(() => {
+    if (!payments.length) return [];
+    // Get all possible contribution keys from the first payment as a representative sample
+    return Object.keys(payments[0].contributions);
+  }, [payments]);
 
   const columnTotals = useMemo(() => {
     const totals = contributionKeys.reduce((acc, key) => {
@@ -89,7 +94,7 @@ const DetailedPaymentTable = ({ payments, onPaymentChange, contributionLabels }:
           <TableRow>
             <TableHead className='sticky left-0 bg-card z-10 w-[200px]'>Nama</TableHead>
             {contributionKeys.map(key => (
-              <TableHead key={key}>{contributionLabels[key]}</TableHead>
+              <TableHead key={key}>{contributionLabels[key] || key}</TableHead>
             ))}
             <TableHead className="text-right">Jumlah</TableHead>
             <TableHead>Status</TableHead>
@@ -112,7 +117,7 @@ const DetailedPaymentTable = ({ payments, onPaymentChange, contributionLabels }:
               
               {contributionKeys.map(type => {
                 const contribution = payment.contributions[type as keyof DetailedPayment['contributions']];
-                 if (contribution && contributionLabels[type]) {
+                 if (contribution && (contributionLabels[type] || type)) {
                     return (
                         <TableCell key={type}>
                             <div className="flex items-center gap-2">
@@ -305,30 +310,17 @@ export default function KeuanganPage() {
     return () => unsubscribe();
   }, [auth, router]);
 
-  // Data fetching
+  // Data fetching for collections
   useEffect(() => {
     if (!db || !user) return;
     
-    const dataLoaded = { payments: false, members: false, groups: false, expenses: false };
-    const checkAllDataLoaded = () => {
-        if (Object.values(dataLoaded).every(Boolean)) {
-            setIsLoading(false);
-        }
-    };
-
+    setIsLoading(true);
     const unsubPayments = subscribeToData(db, 'payments', (data) => { 
         setAllPayments(data as DetailedPayment[]); 
         setLocalChanges(data as DetailedPayment[]);
-        dataLoaded.payments = true; checkAllDataLoaded();
     });
-    const unsubMembers = subscribeToData(db, 'members', (data) => { 
-        setAllMembers(data as Member[]); 
-        dataLoaded.members = true; checkAllDataLoaded(); 
-    });
-    const unsubExpenses = subscribeToData(db, 'expenses', (data) => { 
-        setAllExpenses(data as Expense[]); 
-        dataLoaded.expenses = true; checkAllDataLoaded(); 
-    });
+    const unsubMembers = subscribeToData(db, 'members', (data) => setAllMembers(data as Member[]));
+    const unsubExpenses = subscribeToData(db, 'expenses', (data) => setAllExpenses(data as Expense[]));
     const unsubGroups = subscribeToData(db, 'groups', (data) => {
       const groups = data as Group[];
       setAllGroups(groups);
@@ -339,19 +331,18 @@ export default function KeuanganPage() {
           setSelectedGroup(mainGroup.id);
         }
       }
-      dataLoaded.groups = true; checkAllDataLoaded();
     });
-
 
     return () => { 
         unsubPayments(); unsubMembers(); unsubGroups(); unsubExpenses(); 
     };
-  }, [db, user]); 
+  }, [db, user, selectedGroup]); 
   
   // Fetch contribution settings separately when month changes
   useEffect(() => {
-    if (!db || !selectedMonth || !user) return;
+    if (!db || !user) return;
     
+    setIsLoading(true);
     const fetchSettings = async () => {
         const docId = selectedMonth;
         const docRef = doc(db, 'contributionSettings', docId);
@@ -360,19 +351,14 @@ export default function KeuanganPage() {
         if (docSnap.exists()) {
             setContributionSettings(docSnap.data() as ContributionSettings);
         } else {
-            const lastMonthDate = subMonths(new Date(parseInt(selectedMonth.split('-')[0]), parseInt(selectedMonth.split('-')[1])), 1);
-            const lastMonthId = `${getYear(lastMonthDate)}-${getMonth(lastMonthDate)}`;
-            const lastMonthDocRef = doc(db, 'contributionSettings', lastMonthId);
-            const lastMonthSnap = await getDoc(lastMonthDocRef);
-
-            if (lastMonthSnap.exists()) {
-                setContributionSettings(lastMonthSnap.data() as ContributionSettings);
-                toast({ title: "Info", description: `Pengaturan untuk bulan ini tidak ditemukan, menggunakan pengaturan dari ${format(lastMonthDate, 'MMMM yyyy', {locale: id})}.`});
-            } else {
-                toast({ title: "Peringatan", description: `Pengaturan iuran untuk bulan ini tidak ditemukan, harap atur di halaman Ketetapan Iuran.`, variant: "destructive" });
-                setContributionSettings(null);
-            }
+            setContributionSettings(null); // Explicitly set to null if not found
+             toast({ 
+                title: "Peringatan", 
+                description: `Pengaturan iuran untuk bulan ini tidak ditemukan. Silakan buat di halaman Ketetapan Iuran.`, 
+                variant: "destructive" 
+             });
         }
+        setIsLoading(false);
     }
     fetchSettings();
   }, [db, selectedMonth, user, toast]);
@@ -503,7 +489,11 @@ export default function KeuanganPage() {
   const ensurePaymentsExistForMonth = useCallback(async () => {
       try {
         if (!db || !selectedGroup || !contributionSettings) {
-            throw new Error("Database, group, or settings not ready.");
+            let errorMsg = "Database, grup, atau pengaturan belum siap.";
+            if (!contributionSettings) {
+                errorMsg = `Pengaturan Iuran untuk bulan terpilih belum dibuat. Harap atur terlebih dahulu di halaman Ketetapan Iuran.`;
+            }
+            throw new Error(errorMsg);
         }
         setIsGenerating(true);
 
@@ -514,18 +504,18 @@ export default function KeuanganPage() {
             const [year, month] = selectedMonth.split('-').map(Number);
             const dueDate = format(new Date(year, month, 1), 'yyyy-MM-dd');
 
-            const paymentsQuery = query(collection(db, 'payments'), where('groupId', '==', selectedGroup));
+            // Query existing payments for the specific group and month within the transaction
+            const paymentsQuery = query(
+                collection(db, 'payments'), 
+                where('groupId', '==', selectedGroup),
+                where('dueDate', '==', dueDate)
+            );
             const querySnapshot = await transaction.get(paymentsQuery);
-
-            const paymentsForGroup = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DetailedPayment));
-            const paymentsForMonth = paymentsForGroup.filter(p => {
-                const paymentDate = new Date(p.dueDate);
-                return getYear(paymentDate) === year && getMonth(paymentDate) === month;
-            });
+            const existingMemberIds = new Set(querySnapshot.docs.map(doc => doc.data().memberId));
 
             const membersInGroup = group.memberIds;
-            const membersWithoutPayment = membersInGroup.filter(memberId => !paymentsForMonth.some(p => p.memberId === memberId));
-
+            const membersWithoutPayment = membersInGroup.filter(memberId => !existingMemberIds.has(memberId));
+            
             if (membersWithoutPayment.length > 0) {
                 const isMainGroup = group.name === 'Arisan Utama';
                 
@@ -550,10 +540,7 @@ export default function KeuanganPage() {
                         });
                         totalAmount = Object.values(contributions).reduce((sum, c) => sum + c.amount, 0);
                     } else {
-                        contributions = { 
-                            ...contributions, 
-                            main: { amount: group.contributionAmount, paid: false } 
-                        };
+                        contributions.main = { amount: group.contributionAmount, paid: false };
                         totalAmount = group.contributionAmount;
                     }
 
@@ -571,7 +558,7 @@ export default function KeuanganPage() {
 
         toast({
             title: "Sinkronisasi Selesai",
-            description: `Iuran untuk ${format(new Date(selectedMonth.split('-')[0], selectedMonth.split('-')[1]), 'MMMM yyyy', {locale: id})} telah berhasil dibuat/diverifikasi.`
+            description: `Iuran untuk ${format(parse(selectedMonth, 'yyyy-M', new Date()), 'MMMM yyyy', {locale: id})} telah berhasil dibuat/diverifikasi.`
         });
       } catch (e: any) {
          toast({ title: "Sinkronisasi Gagal", description: e.message || "Terjadi kesalahan.", variant: "destructive" });

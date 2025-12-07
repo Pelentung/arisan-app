@@ -67,29 +67,17 @@ export default function AdminPage() {
         if (docSnap.exists()) {
             setSettings(docSnap.data() as ContributionSettings);
         } else {
-            // If settings for the selected month don't exist,
-            // try to fetch from the previous month as a fallback.
-            const [year, month] = selectedMonth.split('-').map(Number);
-            const prevMonthDate = subMonths(new Date(year, month), 1);
-            const prevMonthId = `${getYear(prevMonthDate)}-${getMonth(prevMonthDate)}`;
-            const prevDocRef = doc(db, 'contributionSettings', prevMonthId);
-
-            getDoc(prevDocRef).then(prevDocSnap => {
-                if (prevDocSnap.exists()) {
-                    setSettings(prevDocSnap.data() as ContributionSettings);
-                     toast({
-                        title: `Pengaturan untuk ${format(new Date(year, month), 'MMMM yyyy', { locale: id })} belum ada.`,
-                        description: `Menampilkan pengaturan dari ${format(prevMonthDate, 'MMMM yyyy', { locale: id })} sebagai gantinya.`,
-                        variant: 'default',
-                    });
-                } else {
-                    setSettings({ main: 0, cash: 0, sick: 0, bereavement: 0, others: [] });
-                }
+            // If settings for the selected month don't exist, start with a blank slate.
+            setSettings({ main: 0, cash: 0, sick: 0, bereavement: 0, others: [] });
+            toast({
+                title: `Membuat Pengaturan Baru`,
+                description: `Tidak ada pengaturan untuk ${monthOptions.find(m => m.value === selectedMonth)?.label}. Silakan isi nominal baru.`,
+                variant: 'default',
             });
         }
         setIsLoading(false);
     });
-  }, [db, selectedMonth, toast]);
+  }, [db, selectedMonth, toast, monthOptions]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -285,5 +273,3 @@ export default function AdminPage() {
     </SidebarProvider>
   );
 }
-
-    
