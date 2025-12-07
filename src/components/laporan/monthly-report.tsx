@@ -74,7 +74,7 @@ export function MonthlyReport() {
         
         const paymentsForMonth = allPayments.filter(p => {
             const paymentDueDate = new Date(p.dueDate);
-            return getYear(paymentDueDate) === year && getMonth(paymentDueDate) === month && p.status === 'Paid';
+            return getYear(paymentDueDate) === year && getMonth(paymentDueDate) === month;
         });
 
         const expensesForMonth = allExpenses.filter(e => {
@@ -82,7 +82,14 @@ export function MonthlyReport() {
             return getYear(expenseDate) === year && getMonth(expenseDate) === month;
         });
 
-        const cashIn = paymentsForMonth.reduce((sum, p) => sum + p.totalAmount, 0);
+        // Calculate cashIn by summing up individual paid contributions
+        const cashIn = paymentsForMonth.reduce((sum, payment) => {
+            const paidContributionsTotal = Object.values(payment.contributions)
+                .filter(c => c.paid)
+                .reduce((contributionSum, c) => contributionSum + c.amount, 0);
+            return sum + paidContributionsTotal;
+        }, 0);
+
         const cashOut = expensesForMonth.reduce((sum, e) => sum + e.amount, 0);
 
         const endingBalance = cashIn - cashOut;
