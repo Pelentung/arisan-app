@@ -21,12 +21,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useFirestore, useAuth } from '@/firebase';
-import { doc, writeBatch, collection, getDocs, query, where, addDoc, updateDoc, deleteDoc, getDoc } from 'firebase/firestore';
+import { doc, writeBatch, collection, getDocs, query, where, addDoc, updateDoc, deleteDoc, getDoc, runTransaction } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { format, getMonth, getYear, startOfMonth, endOfMonth, subMonths, parse } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { MoreHorizontal, PlusCircle, Loader2, Edit, Trash2 } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Loader2, Edit, Trash2, GitPullRequest } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -283,6 +283,7 @@ export default function KeuanganPage() {
   const [selectedMonth, setSelectedMonth] = useState(monthOptions[0].value);
   const [selectedGroup, setSelectedGroup] = useState<string | undefined>(undefined);
   const [localChanges, setLocalChanges] = useState<DetailedPayment[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
   
   // Expenses Dialog
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
@@ -308,7 +309,7 @@ export default function KeuanganPage() {
   useEffect(() => {
     if (!db || !user) return;
     
-    const dataLoaded = { payments: false, members: false, groups: false, expenses: false, settings: false };
+    const dataLoaded = { payments: false, members: false, groups: false, expenses: false };
     const checkAllDataLoaded = () => {
         if (Object.values(dataLoaded).every(Boolean)) {
             setIsLoading(false);
@@ -341,29 +342,6 @@ export default function KeuanganPage() {
       dataLoaded.groups = true; checkAllDataLoaded();
     });
 
-     const fetchSettings = async () => {
-        const docId = selectedMonth.split('-').join('-');
-        const docRef = doc(db, 'contributionSettings', docId);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-            setContributionSettings(docSnap.data() as ContributionSettings);
-        } else {
-            const lastMonthDate = subMonths(new Date(parseInt(selectedMonth.split('-')[0]), parseInt(selectedMonth.split('-')[1])), 1);
-            const lastMonthId = `${getYear(lastMonthDate)}-${getMonth(lastMonthDate)}`;
-            const lastMonthDocRef = doc(db, 'contributionSettings', lastMonthId);
-            const lastMonthSnap = await getDoc(lastMonthDocRef);
-
-            if (lastMonthSnap.exists()) {
-                setContributionSettings(lastMonthSnap.data() as ContributionSettings);
-            } else {
-                setContributionSettings(null);
-            }
-        }
-        dataLoaded.settings = true; checkAllDataLoaded();
-    }
-    fetchSettings();
-
 
     return () => { 
         unsubPayments(); unsubMembers(); unsubGroups(); unsubExpenses(); 
@@ -373,16 +351,15 @@ export default function KeuanganPage() {
   // Fetch contribution settings separately when month changes
   useEffect(() => {
     if (!db || !selectedMonth || !user) return;
-
+    
     const fetchSettings = async () => {
-        const docId = selectedMonth.split('-').join('-');
+        const docId = selectedMonth;
         const docRef = doc(db, 'contributionSettings', docId);
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
             setContributionSettings(docSnap.data() as ContributionSettings);
         } else {
-             // Fallback to last month's settings
             const lastMonthDate = subMonths(new Date(parseInt(selectedMonth.split('-')[0]), parseInt(selectedMonth.split('-')[1])), 1);
             const lastMonthId = `${getYear(lastMonthDate)}-${getMonth(lastMonthDate)}`;
             const lastMonthDocRef = doc(db, 'contributionSettings', lastMonthId);
@@ -523,6 +500,85 @@ export default function KeuanganPage() {
     }
   };
 
+  const ensurePaymentsExistForMonth = useCallback(async () => {
+      try {
+        if (!db || !selectedGroup || !contributionSettings) {
+            throw new Error("Database, group, or settings not ready.");
+        }
+        setIsGenerating(true);
+
+        await runTransaction(db, async (transaction) => {
+            const group = allGroups.find(g => g.id === selectedGroup);
+            if (!group) return;
+
+            const [year, month] = selectedMonth.split('-').map(Number);
+            const dueDate = format(new Date(year, month, 1), 'yyyy-MM-dd');
+
+            const paymentsQuery = query(collection(db, 'payments'), where('groupId', '==', selectedGroup));
+            const querySnapshot = await transaction.get(paymentsQuery);
+
+            const paymentsForGroup = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DetailedPayment));
+            const paymentsForMonth = paymentsForGroup.filter(p => {
+                const paymentDate = new Date(p.dueDate);
+                return getYear(paymentDate) === year && getMonth(paymentDate) === month;
+            });
+
+            const membersInGroup = group.memberIds;
+            const membersWithoutPayment = membersInGroup.filter(memberId => !paymentsForMonth.some(p => p.memberId === memberId));
+
+            if (membersWithoutPayment.length > 0) {
+                const isMainGroup = group.name === 'Arisan Utama';
+                
+                membersWithoutPayment.forEach(memberId => {
+                    const newPaymentRef = doc(collection(db, 'payments'));
+                    
+                    let contributions: DetailedPayment['contributions'] = {
+                         main: { amount: 0, paid: false },
+                         cash: { amount: 0, paid: false },
+                         sick: { amount: 0, paid: false },
+                         bereavement: { amount: 0, paid: false },
+                    };
+                    let totalAmount = 0;
+
+                    if (isMainGroup) {
+                        contributions.main = { amount: contributionSettings.main, paid: false };
+                        contributions.cash = { amount: contributionSettings.cash, paid: false };
+                        contributions.sick = { amount: contributionSettings.sick, paid: false };
+                        contributions.bereavement = { amount: contributionSettings.bereavement, paid: false };
+                        contributionSettings.others.forEach(other => {
+                            contributions[other.id] = { amount: other.amount, paid: false };
+                        });
+                        totalAmount = Object.values(contributions).reduce((sum, c) => sum + c.amount, 0);
+                    } else {
+                        contributions = { 
+                            ...contributions, 
+                            main: { amount: group.contributionAmount, paid: false } 
+                        };
+                        totalAmount = group.contributionAmount;
+                    }
+
+                    transaction.set(newPaymentRef, {
+                        memberId,
+                        groupId: selectedGroup,
+                        dueDate,
+                        contributions,
+                        totalAmount,
+                        status: 'Unpaid',
+                    });
+                });
+            }
+        });
+
+        toast({
+            title: "Sinkronisasi Selesai",
+            description: `Iuran untuk ${format(new Date(selectedMonth.split('-')[0], selectedMonth.split('-')[1]), 'MMMM yyyy', {locale: id})} telah berhasil dibuat/diverifikasi.`
+        });
+      } catch (e: any) {
+         toast({ title: "Sinkronisasi Gagal", description: e.message || "Terjadi kesalahan.", variant: "destructive" });
+      } finally {
+        setIsGenerating(false);
+      }
+  }, [db, selectedGroup, selectedMonth, allGroups, contributionSettings, toast]);
 
   if (isLoadingAuth || !user) {
     return (
@@ -594,6 +650,16 @@ export default function KeuanganPage() {
                                 </div>
                             </CardHeader>
                             <CardContent>
+                                <div className="mb-4 flex justify-end">
+                                      <Button
+                                          variant="outline"
+                                          onClick={ensurePaymentsExistForMonth}
+                                          disabled={isGenerating || !contributionSettings}
+                                        >
+                                          {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GitPullRequest className="mr-2 h-4 w-4" />}
+                                          Buat/Perbarui Iuran Bulan Ini
+                                        </Button>
+                                    </div>
                                 {filteredPayments.length > 0 ? (
                                     selectedGroup === mainArisanGroup.id ? (
                                         <DetailedPaymentTable payments={filteredPayments} onPaymentChange={handleDetailedPaymentChange} contributionLabels={contributionLabels} />
@@ -603,7 +669,7 @@ export default function KeuanganPage() {
                                 ) : (
                                     <div className="text-center text-muted-foreground py-8 h-60 flex flex-col justify-center items-center">
                                         <p>Tidak ada data iuran untuk bulan dan grup ini.</p>
-                                        <p className="text-xs mt-2">Pastikan anggota telah ditambahkan ke grup ini dan data iuran telah dibuat.</p>
+                                        <p className="text-xs mt-2">Klik tombol "Buat/Perbarui Iuran Bulan Ini" untuk membuat data.</p>
                                     </div>
                                 )}
                             </CardContent>
