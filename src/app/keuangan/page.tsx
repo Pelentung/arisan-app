@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import type { DetailedPayment, Member, Group, Expense } from '@/app/data';
+import type { DetailedPayment, Member, Group, Expense, ContributionSettings } from '@/app/data';
 import { subscribeToData } from '@/app/data';
 import { Header } from '@/components/layout/header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,7 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useFirestore, useAuth } from '@/firebase';
-import { doc, writeBatch, collection, getDocs, query, where, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, writeBatch, collection, getDocs, query, where, addDoc, updateDoc, deleteDoc, getDoc, setDoc } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { format, getMonth, getYear, startOfMonth, endOfMonth, subMonths, parse } from 'date-fns';
@@ -59,7 +59,7 @@ const generateMonthOptions = () => {
 };
 
 // --- Detailed Table for Main Group ---
-const DetailedPaymentTable = ({ payments, onPaymentChange, onAmountChange, contributionLabels }: { payments: (DetailedPayment & { member?: Member })[], onPaymentChange: (paymentId: string, contributionType: keyof DetailedPayment['contributions'], isPaid: boolean) => void, onAmountChange: (paymentId: string, contributionType: string, amount: number) => void, contributionLabels: Record<string, string>}) => {
+const DetailedPaymentTable = ({ payments, onPaymentChange, onAmountChange, contributionLabels }: { payments: (DetailedPayment & { member?: Member })[], onPaymentChange: (paymentId: string, contributionType: keyof DetailedPayment['contributions'], isPaid: boolean) => void, onAmountChange: (paymentId: string, contributionType: string, amount: number) => void, contributionLabels: ContributionSettings}) => {
   const contributionKeys = useMemo(() => {
     // Explicitly define the order of the columns
     return ['main', 'cash', 'sick', 'bereavement', 'other1', 'other2', 'other3'];
@@ -95,7 +95,7 @@ const DetailedPaymentTable = ({ payments, onPaymentChange, onAmountChange, contr
           <TableRow>
             <TableHead className='sticky left-0 bg-card z-10 w-[200px]'>Nama</TableHead>
             {contributionKeys.map(key => (
-              <TableHead key={key}>{contributionLabels[key] || key}</TableHead>
+              <TableHead key={key}>{contributionLabels[key as keyof ContributionSettings] || key}</TableHead>
             ))}
             <TableHead className="text-right">Jumlah</TableHead>
             <TableHead>Status</TableHead>
@@ -119,7 +119,7 @@ const DetailedPaymentTable = ({ payments, onPaymentChange, onAmountChange, contr
               {contributionKeys.map(type => {
                 const contribution = payment.contributions[type as keyof DetailedPayment['contributions']];
                  if (contribution !== undefined) {
-                    const label = contributionLabels[type] || type;
+                    const label = contributionLabels[type as keyof ContributionSettings] || type;
                     const isEditable = type.startsWith('sick') || type.startsWith('bereavement') || type.startsWith('other');
                     
                     return (
@@ -281,6 +281,16 @@ const ExpenseDialog = ({ expense, isOpen, onClose, onSave }: { expense: Partial<
   );
 };
 
+const defaultContributionLabels: ContributionSettings = {
+    main: 'Iuran Utama',
+    cash: 'Iuran Kas',
+    sick: 'Iuran Sakit',
+    bereavement: 'Iuran Kemalangan',
+    other1: 'Lainnya 1',
+    other2: 'Lainnya 2',
+    other3: 'Lainnya 3'
+};
+
 export default function KeuanganPage() {
   const { toast } = useToast();
   const db = useFirestore();
@@ -295,6 +305,8 @@ export default function KeuanganPage() {
   const [allGroups, setAllGroups] = useState<Group[]>([]);
   const [allExpenses, setAllExpenses] = useState<Expense[]>([]);
   const [mainArisanGroup, setMainArisanGroup] = useState<Group | null>(null);
+  const [contributionLabels, setContributionLabels] = useState<ContributionSettings>(defaultContributionLabels);
+
 
   // Page state
   const monthOptions = useMemo(() => generateMonthOptions(), []);
@@ -309,17 +321,6 @@ export default function KeuanganPage() {
   
   // Loading state
   const [isLoading, setIsLoading] = useState(true);
-
-  // You can ask the AI to modify the labels here in the future
-  const contributionLabels: Record<string, string> = {
-    main: 'Iuran Utama',
-    cash: 'Iuran Kas',
-    sick: 'Iuran Sakit',
-    bereavement: 'Iuran Kemalangan',
-    other1: 'Lainnya 1',
-    other2: 'Lainnya 2',
-    other3: 'Lainnya 3'
-  };
 
   useEffect(() => {
     if (!auth) return;
@@ -339,6 +340,20 @@ export default function KeuanganPage() {
     if (!db || !user) return;
     
     setIsLoading(true);
+
+    // Fetch contribution labels
+    const fetchLabels = async () => {
+        const labelsDocRef = doc(db, 'contributionSettings', 'labels');
+        const docSnap = await getDoc(labelsDocRef);
+        if (docSnap.exists()) {
+            setContributionLabels(docSnap.data() as ContributionSettings);
+        } else {
+            // If not exists, create with default values
+            await setDoc(labelsDocRef, defaultContributionLabels);
+        }
+    };
+    fetchLabels();
+
     const unsubPayments = subscribeToData(db, 'payments', (data) => { 
         setAllPayments(data as DetailedPayment[]); 
         setLocalChanges(data as DetailedPayment[]);
@@ -356,16 +371,25 @@ export default function KeuanganPage() {
         }
       }
     });
+    const unsubLabels = subscribeToData(db, 'contributionSettings', (data) => {
+        if (data.length > 0) {
+            const labelsData = data.find(d => d.id === 'labels');
+            if (labelsData) {
+                setContributionLabels(labelsData as ContributionSettings);
+            }
+        }
+    });
     
     Promise.all([
         new Promise(resolve => { const unsub = subscribeToData(db, 'payments', () => { resolve(true); unsub(); }); }),
         new Promise(resolve => { const unsub = subscribeToData(db, 'members', () => { resolve(true); unsub(); }); }),
         new Promise(resolve => { const unsub = subscribeToData(db, 'expenses', () => { resolve(true); unsub(); }); }),
         new Promise(resolve => { const unsub = subscribeToData(db, 'groups', () => { resolve(true); unsub(); }); }),
+        new Promise(resolve => { const unsub = subscribeToData(db, 'contributionSettings', () => { resolve(true); unsub(); }); }),
     ]).finally(() => setIsLoading(false));
 
     return () => { 
-        unsubPayments(); unsubMembers(); unsubGroups(); unsubExpenses(); 
+        unsubPayments(); unsubMembers(); unsubGroups(); unsubExpenses(); unsubLabels();
     };
   }, [db, user]); 
 

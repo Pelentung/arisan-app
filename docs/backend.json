@@ -284,46 +284,18 @@
     },
     "contributionSettings": {
       "title": "Contribution Settings",
-      "description": "Settings for contribution amounts for a specific month.",
+      "description": "Stores the editable labels for different contribution types.",
       "type": "object",
       "properties": {
-        "main": {
-          "type": "number"
-        },
-        "cash": {
-          "type": "number"
-        },
-        "sick": {
-          "type": "number"
-        },
-        "bereavement": {
-          "type": "number"
-        },
-        "others": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string"
-              },
-              "description": {
-                "type": "string"
-              },
-              "amount": {
-                "type": "number"
-              }
-            }
-          }
-        }
+        "main": { "type": "string", "description": "Label for the main contribution." },
+        "cash": { "type": "string", "description": "Label for the cash contribution." },
+        "sick": { "type": "string", "description": "Label for the sick fund contribution." },
+        "bereavement": { "type": "string", "description": "Label for the bereavement fund contribution." },
+        "other1": { "type": "string", "description": "Label for the first other contribution." },
+        "other2": { "type": "string", "description": "Label for the second other contribution." },
+        "other3": { "type": "string", "description": "Label for the third other contribution." }
       },
-      "required": [
-        "main",
-        "cash",
-        "sick",
-        "bereavement",
-        "others"
-      ]
+      "required": [ "main", "cash", "sick", "bereavement", "other1", "other2", "other3" ]
     }
   },
   "auth": {
@@ -360,11 +332,11 @@
       },
       "description": "Stores announcements."
     },
-    "/contributionSettings/{monthId}": {
+    "/contributionSettings/labels": {
       "schema": {
         "$ref": "#/entities/contributionSettings"
       },
-      "description": "Stores monthly contribution settings. The monthId should be in 'YYYY-MM' format."
+      "description": "Stores the global labels for contribution types. There should only be one document with the ID 'labels'."
     }
   }
 }

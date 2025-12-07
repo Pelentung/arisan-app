@@ -65,12 +65,18 @@ export interface Announcement {
   updatedAt: any; // Allow Firestore Timestamp
 }
 
-
-export interface OtherContribution {
-    id: string;
-    description: string;
-    amount: number;
+// Represents the document structure for storing contribution labels
+export interface ContributionSettings {
+  id?: string; // Should be a singleton, e.g., 'labels'
+  main: string;
+  cash: string;
+  sick: string;
+  bereavement: string;
+  other1: string;
+  other2: string;
+  other3: string;
 }
+
 
 // Global array to hold all active listeners
 let activeListeners: (() => void)[] = [];
