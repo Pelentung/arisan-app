@@ -59,7 +59,7 @@ const generateMonthOptions = () => {
 };
 
 // --- Detailed Table for Main Group ---
-const DetailedPaymentTable = ({ payments, onPaymentChange, contributionLabels }: { payments: (DetailedPayment & { member?: Member })[], onPaymentChange: (paymentId: string, contributionType: keyof DetailedPayment['contributions'], isPaid: boolean) => void, contributionLabels: Record<string, string>}) => {
+const DetailedPaymentTable = ({ payments, onPaymentChange, onAmountChange, contributionLabels }: { payments: (DetailedPayment & { member?: Member })[], onPaymentChange: (paymentId: string, contributionType: keyof DetailedPayment['contributions'], isPaid: boolean) => void, onAmountChange: (paymentId: string, contributionType: string, amount: number) => void, contributionLabels: Record<string, string>}) => {
   const contributionKeys = useMemo(() => {
     const preferredOrder = ['main', 'cash', 'sick', 'bereavement', 'others'];
     if (!payments.length || !payments[0].contributions) return preferredOrder;
@@ -122,25 +122,37 @@ const DetailedPaymentTable = ({ payments, onPaymentChange, contributionLabels }:
                 const contribution = payment.contributions[type as keyof DetailedPayment['contributions']];
                  if (contribution) {
                     const label = contributionLabels[type] || type;
-                     if (label) {
+                    const isEditable = type === 'sick' || type === 'bereavement' || type === 'others';
+
+                    if (label) {
                         return (
                             <TableCell key={type}>
                                 <div className="flex items-center gap-2">
-                                <Checkbox
-                                    id={`paid-${payment.id}-${type}`}
-                                    checked={contribution.paid}
-                                    onCheckedChange={checked => onPaymentChange(payment.id, type, !!checked)}
-                                    aria-label={`Tandai ${label} untuk ${payment.member?.name} lunas`}
-                                />
-                                <label htmlFor={`paid-${payment.id}-${type}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                    {formatCurrency(contribution.amount)}
-                                </label>
+                                    <Checkbox
+                                        id={`paid-${payment.id}-${type}`}
+                                        checked={contribution.paid}
+                                        onCheckedChange={checked => onPaymentChange(payment.id, type, !!checked)}
+                                        aria-label={`Tandai ${label} untuk ${payment.member?.name} lunas`}
+                                    />
+                                    {isEditable ? (
+                                        <Input
+                                            type="number"
+                                            value={contribution.amount}
+                                            onChange={(e) => onAmountChange(payment.id, type, Number(e.target.value))}
+                                            className="h-8 w-24"
+                                            placeholder="0"
+                                        />
+                                    ) : (
+                                        <label htmlFor={`paid-${payment.id}-${type}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                            {formatCurrency(contribution.amount)}
+                                        </label>
+                                    )}
                                 </div>
                             </TableCell>
                         )
-                     }
+                    }
                  }
-                 return <TableCell key={type}></TableCell>; // Render empty cell if contribution doesn't exist for this payment
+                 return <TableCell key={type}></TableCell>;
               })}
 
               <TableCell className="text-right">
@@ -348,7 +360,7 @@ export default function KeuanganPage() {
     return () => { 
         unsubPayments(); unsubMembers(); unsubGroups(); unsubExpenses(); 
     };
-  }, [db, user]); 
+  }, [db, user, selectedMonth]); 
 
   // Filtered data for display
   const filteredPayments = useMemo(() => {
@@ -386,7 +398,7 @@ export default function KeuanganPage() {
 
             const updatedContributions = {
                 ...p.contributions,
-                [contributionType]: { ...p.contributions[contributionType], paid: isPaid },
+                [contributionType]: { ...p.contributions[contributionType as keyof DetailedPayment['contributions']], paid: isPaid },
             };
             
             const allContributionsPaid = Object.values(updatedContributions).every(c => c.paid);
@@ -398,6 +410,27 @@ export default function KeuanganPage() {
             };
         })
     );
+  }, []);
+
+  const handleAmountChange = useCallback((paymentId: string, contributionType: string, amount: number) => {
+      setLocalChanges(prev =>
+          prev.map(p => {
+              if (p.id !== paymentId) return p;
+
+              const updatedContributions = {
+                  ...p.contributions,
+                  [contributionType]: { ...p.contributions[contributionType as keyof DetailedPayment['contributions']], amount: amount },
+              };
+              
+              const newTotalAmount = Object.values(updatedContributions).reduce((sum, c) => sum + (c?.amount || 0), 0);
+
+              return {
+                  ...p,
+                  contributions: updatedContributions,
+                  totalAmount: newTotalAmount,
+              };
+          })
+      );
   }, []);
 
   const handleSimpleStatusChange = (paymentId: string, newStatus: DetailedPayment['status']) => {
@@ -482,12 +515,11 @@ export default function KeuanganPage() {
       const dueDate = format(new Date(year, month, 1), 'yyyy-MM-dd');
 
       const isMainGroup = group.name === 'Arisan Utama';
-      const fixedMainAmount = isMainGroup ? 90000 : group.contributionAmount;
-      const fixedCashAmount = isMainGroup ? 10000 : 0;
+      const fixedMainAmount = 90000;
+      const fixedCashAmount = 10000;
       
       const batch = writeBatch(db);
 
-      // Fetch existing payments for the month in one go
       const paymentsQuery = query(
         collection(db, 'payments'),
         where('groupId', '==', selectedGroup),
@@ -503,31 +535,30 @@ export default function KeuanganPage() {
         let totalAmount: number;
 
         if (isMainGroup) {
-          contributions = {
+          const updatedContributions = {
             main: { amount: fixedMainAmount, paid: existingPayment?.contributions.main.paid || false },
             cash: { amount: fixedCashAmount, paid: existingPayment?.contributions.cash.paid || false },
             sick: { amount: existingPayment?.contributions.sick?.amount || 0, paid: existingPayment?.contributions.sick?.paid || false },
             bereavement: { amount: existingPayment?.contributions.bereavement?.amount || 0, paid: existingPayment?.contributions.bereavement?.paid || false },
             others: { amount: existingPayment?.contributions.others?.amount || 0, paid: existingPayment?.contributions.others?.paid || false },
           };
+          contributions = updatedContributions;
           totalAmount = Object.values(contributions).reduce((sum, c) => sum + c.amount, 0);
         } else {
           contributions = {
             main: { amount: group.contributionAmount, paid: existingPayment?.contributions.main.paid || false },
-            cash: { amount: 0, paid: false },
-            sick: { amount: 0, paid: false },
-            bereavement: { amount: 0, paid: false },
-            others: { amount: 0, paid: false },
+            cash: { amount: 0, paid: true },
+            sick: { amount: 0, paid: true },
+            bereavement: { amount: 0, paid: true },
+            others: { amount: 0, paid: true },
           };
           totalAmount = group.contributionAmount;
         }
 
         if (existingPayment) {
-          // Update existing payment
           const paymentRef = doc(db, 'payments', existingPayment.id);
           batch.update(paymentRef, { contributions, totalAmount });
         } else {
-          // Create new payment
           const newPaymentRef = doc(collection(db, 'payments'));
           batch.set(newPaymentRef, {
             memberId,
@@ -637,7 +668,7 @@ export default function KeuanganPage() {
                                     </div>
                                 {filteredPayments.length > 0 ? (
                                     selectedGroup === mainArisanGroup.id ? (
-                                        <DetailedPaymentTable payments={filteredPayments} onPaymentChange={handleDetailedPaymentChange} contributionLabels={contributionLabels} />
+                                        <DetailedPaymentTable payments={filteredPayments} onPaymentChange={handleDetailedPaymentChange} onAmountChange={handleAmountChange} contributionLabels={contributionLabels} />
                                     ) : (
                                         <SimplePaymentTable payments={filteredPayments} onStatusChange={handleSimpleStatusChange} />
                                     )
