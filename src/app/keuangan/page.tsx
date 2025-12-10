@@ -591,43 +591,29 @@ export default function KeuanganPage() {
         if (existingPayment) {
           // --- UPDATE EXISTING PAYMENT ---
           const paymentRef = doc(db, 'payments', existingPayment.id);
-          
-          // Force-rebuild contributions object to ensure all keys exist
+          const oldContribs = existingPayment.contributions || {};
+
+          // Rebuild contributions object to ensure all keys exist, preserving old data
           const newContributions: DetailedPayment['contributions'] = {
-            main: { 
+            main: {
               amount: isMainGroup ? fixedMainAmount : group.contributionAmount,
-              paid: existingPayment.contributions.main?.paid || false
+              paid: oldContribs.main ? oldContribs.main.paid : false
             },
-            cash: { 
+            cash: {
               amount: isMainGroup ? fixedCashAmount : 0,
-              paid: isMainGroup ? (existingPayment.contributions.cash?.paid || false) : true
+              paid: isMainGroup ? (oldContribs.cash ? oldContribs.cash.paid : false) : true
             },
-            sick: { 
-                amount: existingPayment.contributions.sick?.amount || 0,
-                paid: existingPayment.contributions.sick?.paid || false 
-            },
-            bereavement: {
-                amount: existingPayment.contributions.bereavement?.amount || 0,
-                paid: existingPayment.contributions.bereavement?.paid || false
-            },
-            other1: {
-                amount: existingPayment.contributions.other1?.amount || 0,
-                paid: existingPayment.contributions.other1?.paid || false
-            },
-            other2: {
-                amount: existingPayment.contributions.other2?.amount || 0,
-                paid: existingPayment.contributions.other2?.paid || false
-            },
-            other3: {
-                amount: existingPayment.contributions.other3?.amount || 0,
-                paid: existingPayment.contributions.other3?.paid || false
-            }
+            sick: oldContribs.sick || { amount: 0, paid: false },
+            bereavement: oldContribs.bereavement || { amount: 0, paid: false },
+            other1: oldContribs.other1 || { amount: 0, paid: false },
+            other2: oldContribs.other2 || { amount: 0, paid: false },
+            other3: oldContribs.other3 || { amount: 0, paid: false }
           };
 
           const totalAmount = Object.values(newContributions).reduce((sum, c) => sum + (c?.amount || 0), 0);
           
           // Check if there are actual changes before writing to batch
-          if (JSON.stringify(existingPayment.contributions) !== JSON.stringify(newContributions) || existingPayment.totalAmount !== totalAmount) {
+          if (JSON.stringify(oldContribs) !== JSON.stringify(newContributions) || existingPayment.totalAmount !== totalAmount) {
               batch.update(paymentRef, { contributions: newContributions, totalAmount });
               updatedCount++;
           }
