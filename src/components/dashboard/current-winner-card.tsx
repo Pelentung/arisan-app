@@ -45,21 +45,22 @@ export function CurrentWinnerCard() {
     };
   }, [db]);
 
-  const { currentWinner, mapUrl } = useMemo(() => {
+  const { currentWinner, embedMapUrl, clickableMapUrl } = useMemo(() => {
     const mainGroup = groups.find(g => g.name === 'Arisan Utama');
     if (!mainGroup || !mainGroup.currentWinnerId) {
-      return { currentWinner: null, mapUrl: null };
+      return { currentWinner: null, embedMapUrl: null, clickableMapUrl: null };
     }
 
     const winner = members.find(m => m.id === mainGroup.currentWinnerId);
     if (!winner || !winner.address) {
-      return { currentWinner: winner || null, mapUrl: null };
+      return { currentWinner: winner || null, embedMapUrl: null, clickableMapUrl: null };
     }
 
     const encodedAddress = encodeURIComponent(winner.address);
-    const url = `https://maps.google.com/maps?q=${encodedAddress}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+    const embedUrl = `https://maps.google.com/maps?q=${encodedAddress}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+    const clickableUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
 
-    return { currentWinner: winner, mapUrl: url };
+    return { currentWinner: winner, embedMapUrl: embedUrl, clickableMapUrl: clickableUrl };
   }, [groups, members]);
 
   return (
@@ -98,18 +99,20 @@ export function CurrentWinnerCard() {
               </div>
             </div>
             <div className="md:col-span-2 h-64 md:h-full w-full rounded-lg overflow-hidden border">
-              {mapUrl ? (
-                <iframe
-                  width="100%"
-                  height="100%"
-                  frameBorder="0"
-                  scrolling="no"
-                  marginHeight={0}
-                  marginWidth={0}
-                  src={mapUrl}
-                  title={`Lokasi ${currentWinner.name}`}
-                  aria-label={`Lokasi ${currentWinner.name}`}
-                ></iframe>
+              {embedMapUrl && clickableMapUrl ? (
+                <a href={clickableMapUrl} target="_blank" rel="noopener noreferrer" aria-label={`Buka lokasi ${currentWinner.name} di Google Maps`}>
+                  <iframe
+                    width="100%"
+                    height="100%"
+                    className="pointer-events-none"
+                    frameBorder="0"
+                    scrolling="no"
+                    marginHeight={0}
+                    marginWidth={0}
+                    src={embedMapUrl}
+                    title={`Lokasi ${currentWinner.name}`}
+                  ></iframe>
+                </a>
               ) : (
                 <div className="flex items-center justify-center h-full bg-muted">
                   <p className="text-muted-foreground">Peta tidak tersedia karena alamat tidak lengkap.</p>
