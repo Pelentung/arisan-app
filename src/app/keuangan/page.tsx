@@ -120,8 +120,6 @@ const DetailedPaymentTable = ({ payments, onPaymentChange, onAmountChange, contr
                 const contribution = payment.contributions[type as keyof DetailedPayment['contributions']];
                  if (contribution !== undefined) {
                     const label = contributionLabels[type as keyof ContributionSettings] || type;
-                    const isEditable = type.startsWith('sick') || type.startsWith('bereavement') || type.startsWith('other');
-                    
                     return (
                         <TableCell key={type}>
                             <div className="flex items-center gap-2">
@@ -131,19 +129,9 @@ const DetailedPaymentTable = ({ payments, onPaymentChange, onAmountChange, contr
                                     onCheckedChange={checked => onPaymentChange(payment.id, type as keyof DetailedPayment['contributions'], !!checked)}
                                     aria-label={`Tandai ${label} untuk ${payment.member?.name} lunas`}
                                 />
-                                {isEditable ? (
-                                     <Input
-                                        type="number"
-                                        value={contribution.amount}
-                                        onChange={(e) => onAmountChange(payment.id, type, Number(e.target.value))}
-                                        className="h-8 w-24"
-                                        placeholder="0"
-                                    />
-                                ) : (
-                                    <label htmlFor={`paid-${payment.id}-${type}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                        {formatCurrency(contribution.amount)}
-                                    </label>
-                                )}
+                                <label htmlFor={`paid-${payment.id}-${type}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                    {formatCurrency(contribution.amount)}
+                                </label>
                             </div>
                         </TableCell>
                     )
@@ -289,7 +277,7 @@ const defaultContributionLabels: ContributionSettings = {
     bereavement: 'Iuran Kemalangan',
     other1: 'Lainnya 1',
     other2: 'Lainnya 2',
-    other3: 'Lainnya 3'
+    other3: 'Lainnya 3',
 };
 
 export default function KeuanganPage() {
@@ -604,7 +592,7 @@ export default function KeuanganPage() {
           // --- UPDATE EXISTING PAYMENT ---
           const paymentRef = doc(db, 'payments', existingPayment.id);
           
-          // Rebuild contributions object to ensure all keys exist
+          // Force-rebuild contributions object to ensure all keys exist
           const newContributions: DetailedPayment['contributions'] = {
             main: { 
               amount: isMainGroup ? fixedMainAmount : group.contributionAmount,
@@ -853,7 +841,3 @@ export default function KeuanganPage() {
     </SidebarProvider>
   );
 }
-
-    
-
-    
