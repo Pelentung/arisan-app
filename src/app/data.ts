@@ -65,16 +65,16 @@ export interface Announcement {
   updatedAt: any; // Allow Firestore Timestamp
 }
 
-// Represents the document structure for storing contribution labels
+// Represents the document structure for storing contribution amounts
 export interface ContributionSettings {
-  id?: string; // Should be a singleton, e.g., 'labels'
-  main: string;
-  cash: string;
-  sick: string;
-  bereavement: string;
-  other1: string;
-  other2: string;
-  other3: string;
+  id?: string; // Should be a singleton, e.g., 'defaults'
+  main: number;
+  cash: number;
+  sick: number;
+  bereavement: number;
+  other1: number;
+  other2: number;
+  other3: number;
 }
 
 

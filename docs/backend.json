@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "arisanData": {
@@ -284,16 +283,16 @@
     },
     "contributionSettings": {
       "title": "Contribution Settings",
-      "description": "Stores the editable labels for different contribution types.",
+      "description": "Stores the editable default amounts for different contribution types.",
       "type": "object",
       "properties": {
-        "main": { "type": "string", "description": "Label for the main contribution." },
-        "cash": { "type": "string", "description": "Label for the cash contribution." },
-        "sick": { "type": "string", "description": "Label for the sick fund contribution." },
-        "bereavement": { "type": "string", "description": "Label for the bereavement fund contribution." },
-        "other1": { "type": "string", "description": "Label for the first other contribution." },
-        "other2": { "type": "string", "description": "Label for the second other contribution." },
-        "other3": { "type": "string", "description": "Label for the third other contribution." }
+        "main": { "type": "number", "description": "Default amount for the main contribution." },
+        "cash": { "type": "number", "description": "Default amount for the cash contribution." },
+        "sick": { "type": "number", "description": "Default amount for the sick fund contribution." },
+        "bereavement": { "type": "number", "description": "Default amount for the bereavement fund contribution." },
+        "other1": { "type": "number", "description": "Default amount for the first other contribution." },
+        "other2": { "type": "number", "description": "Default amount for the second other contribution." },
+        "other3": { "type": "number", "description": "Default amount for the third other contribution." }
       },
       "required": [ "main", "cash", "sick", "bereavement", "other1", "other2", "other3" ]
     }
@@ -332,11 +331,11 @@
       },
       "description": "Stores announcements."
     },
-    "/contributionSettings/labels": {
+    "/contributionSettings/defaults": {
       "schema": {
         "$ref": "#/entities/contributionSettings"
       },
-      "description": "Stores the global labels for contribution types. There should only be one document with the ID 'labels'."
+      "description": "Stores the global default amounts for contribution types. There should only be one document with the ID 'defaults'."
     }
   }
 }

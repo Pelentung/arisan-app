@@ -34,7 +34,7 @@ const navItems = [
   { href: '/grup', label: 'Kelola Grup & Anggota', icon: Users },
   { href: '/undian', label: 'Yang Sudah Narik', icon: Trophy },
   { href: '/pengumuman', label: 'Pengumuman', icon: Megaphone },
-  { href: '/pengaturan', label: 'Pengaturan', icon: Settings },
+  { href: '/pengaturan', label: 'Ketetapan Iuran', icon: Settings },
 ];
 
 export function SidebarNav() {

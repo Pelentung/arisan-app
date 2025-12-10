@@ -58,10 +58,21 @@ const generateMonthOptions = () => {
     return options;
 };
 
+// A fixed mapping for labels, can be moved to a settings file/db later if needed
+const contributionLabels = {
+    main: 'Iuran Utama',
+    cash: 'Iuran Kas',
+    sick: 'Iuran Sakit',
+    bereavement: 'Iuran Kemalangan',
+    other1: 'Lainnya 1',
+    other2: 'Lainnya 2',
+    other3: 'Lainnya 3',
+};
+
+
 // --- Detailed Table for Main Group ---
-const DetailedPaymentTable = ({ payments, onPaymentChange, onAmountChange, contributionLabels }: { payments: (DetailedPayment & { member?: Member })[], onPaymentChange: (paymentId: string, contributionType: keyof DetailedPayment['contributions'], isPaid: boolean) => void, onAmountChange: (paymentId: string, contributionType: string, amount: number) => void, contributionLabels: ContributionSettings}) => {
+const DetailedPaymentTable = ({ payments, onPaymentChange }: { payments: (DetailedPayment & { member?: Member })[], onPaymentChange: (paymentId: string, contributionType: keyof DetailedPayment['contributions'], isPaid: boolean) => void }) => {
   const contributionKeys = useMemo(() => {
-    // Explicitly define the order of the columns
     return ['main', 'cash', 'sick', 'bereavement', 'other1', 'other2', 'other3'];
   }, []);
 
@@ -82,7 +93,6 @@ const DetailedPaymentTable = ({ payments, onPaymentChange, onAmountChange, contr
         });
     });
     
-    // Recalculate grandTotal based on paid contributions only
     grandTotal = Object.values(totals).reduce((sum, amount) => sum + amount, 0);
 
     return { ...totals, grandTotal };
@@ -95,7 +105,7 @@ const DetailedPaymentTable = ({ payments, onPaymentChange, onAmountChange, contr
           <TableRow>
             <TableHead className='sticky left-0 bg-card z-10 w-[200px]'>Nama</TableHead>
             {contributionKeys.map(key => (
-              <TableHead key={key}>{contributionLabels[key as keyof ContributionSettings] || key}</TableHead>
+              <TableHead key={key}>{contributionLabels[key as keyof typeof contributionLabels] || key}</TableHead>
             ))}
             <TableHead className="text-right">Jumlah</TableHead>
             <TableHead>Status</TableHead>
@@ -119,7 +129,7 @@ const DetailedPaymentTable = ({ payments, onPaymentChange, onAmountChange, contr
               {contributionKeys.map(type => {
                 const contribution = payment.contributions[type as keyof DetailedPayment['contributions']];
                  if (contribution !== undefined) {
-                    const label = contributionLabels[type as keyof ContributionSettings] || type;
+                    const label = contributionLabels[type as keyof typeof contributionLabels] || type;
                     return (
                         <TableCell key={type}>
                             <div className="flex items-center gap-2">
@@ -269,15 +279,15 @@ const ExpenseDialog = ({ expense, isOpen, onClose, onSave }: { expense: Partial<
   );
 };
 
-const defaultContributionLabels: ContributionSettings = {
-    id: 'labels',
-    main: 'Iuran Utama',
-    cash: 'Iuran Kas',
-    sick: 'Iuran Sakit',
-    bereavement: 'Iuran Kemalangan',
-    other1: 'Lainnya 1',
-    other2: 'Lainnya 2',
-    other3: 'Lainnya 3',
+const defaultContributionSettings: ContributionSettings = {
+    id: 'defaults',
+    main: 0,
+    cash: 0,
+    sick: 0,
+    bereavement: 0,
+    other1: 0,
+    other2: 0,
+    other3: 0,
 };
 
 export default function KeuanganPage() {
@@ -294,7 +304,7 @@ export default function KeuanganPage() {
   const [allGroups, setAllGroups] = useState<Group[]>([]);
   const [allExpenses, setAllExpenses] = useState<Expense[]>([]);
   const [mainArisanGroup, setMainArisanGroup] = useState<Group | null>(null);
-  const [contributionLabels, setContributionLabels] = useState<ContributionSettings>(defaultContributionLabels);
+  const [contributionSettings, setContributionSettings] = useState<ContributionSettings>(defaultContributionSettings);
 
 
   // Page state
@@ -347,11 +357,11 @@ export default function KeuanganPage() {
         }
       }
     });
-    const unsubLabels = subscribeToData(db, 'contributionSettings', (data) => {
+    const unsubSettings = subscribeToData(db, 'contributionSettings', (data) => {
         if (data.length > 0) {
-            const labelsData = data.find(d => d.id === 'labels');
-            if (labelsData) {
-                setContributionLabels(labelsData as ContributionSettings);
+            const settingsData = data.find(d => d.id === 'defaults');
+            if (settingsData) {
+                setContributionSettings(settingsData as ContributionSettings);
             }
         }
     });
@@ -365,7 +375,7 @@ export default function KeuanganPage() {
     ]).finally(() => setIsLoading(false));
 
     return () => { 
-        unsubPayments(); unsubMembers(); unsubGroups(); unsubExpenses(); unsubLabels();
+        unsubPayments(); unsubMembers(); unsubGroups(); unsubExpenses(); unsubSettings();
     };
   }, [db, user]); 
 
@@ -385,7 +395,6 @@ export default function KeuanganPage() {
                group.memberIds.includes(p.memberId);
       });
   
-    // Deduplicate payments by memberId, taking the first one found for UI display.
     const uniquePaymentsMap = new Map<string, DetailedPayment>();
     for (const payment of paymentsForMonthAndGroup) {
       if (!uniquePaymentsMap.has(payment.memberId)) {
@@ -429,27 +438,6 @@ export default function KeuanganPage() {
             };
         })
     );
-  }, []);
-
-  const handleAmountChange = useCallback((paymentId: string, contributionType: string, amount: number) => {
-      setLocalChanges(prev =>
-          prev.map(p => {
-              if (p.id !== paymentId) return p;
-
-              const updatedContributions: DetailedPayment['contributions'] = {
-                  ...p.contributions,
-                  [contributionType]: { ...(p.contributions[contributionType as keyof DetailedPayment['contributions']] || { paid: false }), amount: amount },
-              };
-              
-              const newTotalAmount = Object.values(updatedContributions).reduce((sum, c) => sum + (c?.amount || 0), 0);
-
-              return {
-                  ...p,
-                  contributions: updatedContributions,
-                  totalAmount: newTotalAmount,
-              };
-          })
-      );
   }, []);
 
   const handleSimpleStatusChange = (paymentId: string, newStatus: DetailedPayment['status']) => {
@@ -537,12 +525,9 @@ export default function KeuanganPage() {
       const dueDate = format(new Date(year, month, 1), 'yyyy-MM-dd');
 
       const isMainGroup = group.name === 'Arisan Utama';
-      const fixedMainAmount = 90000;
-      const fixedCashAmount = 10000;
       
       const batch = writeBatch(db);
 
-      // 1. Fetch ALL existing payments for the selected month and group
       const paymentsQuery = query(
         collection(db, 'payments'),
         where('groupId', '==', selectedGroup),
@@ -551,7 +536,6 @@ export default function KeuanganPage() {
       const querySnapshot = await getDocs(paymentsQuery);
       const existingPaymentsDocs = querySnapshot.docs;
 
-      // 2. Group payments by memberId
       const paymentsByMember = new Map<string, (DetailedPayment & { id: string })[]>();
       existingPaymentsDocs.forEach(doc => {
           const payment = { id: doc.id, ...doc.data() } as (DetailedPayment & { id: string });
@@ -561,10 +545,8 @@ export default function KeuanganPage() {
           paymentsByMember.get(payment.memberId)!.push(payment);
       });
 
-      // 3. Handle duplicates: decide which one to keep and delete others
       for (const [memberId, payments] of paymentsByMember.entries()) {
           if (payments.length > 1) {
-              // Sort to find the 'best' one to keep (e.g., paid, or highest total amount)
               payments.sort((a, b) => {
                   if (a.status === 'Paid' && b.status !== 'Paid') return -1;
                   if (b.status === 'Paid' && a.status !== 'Paid') return 1;
@@ -578,85 +560,67 @@ export default function KeuanganPage() {
                   batch.delete(doc(db, 'payments', p.id));
                   deletedCount++;
               });
-              // Update the map to only contain the payment we're keeping
               paymentsByMember.set(memberId, [paymentToKeep]);
           }
       }
 
-      // 4. Iterate over group members to create or update payments
       for (const memberId of group.memberIds) {
         const existingPaymentArr = paymentsByMember.get(memberId);
         const existingPayment = existingPaymentArr ? existingPaymentArr[0] : undefined;
         
+        let newContributions: DetailedPayment['contributions'];
+        let totalAmount: number;
+
+        if (isMainGroup) {
+            newContributions = {
+                main: { amount: contributionSettings.main, paid: false },
+                cash: { amount: contributionSettings.cash, paid: false },
+                sick: { amount: contributionSettings.sick, paid: false },
+                bereavement: { amount: contributionSettings.bereavement, paid: false },
+                other1: { amount: contributionSettings.other1, paid: false },
+                other2: { amount: contributionSettings.other2, paid: false },
+                other3: { amount: contributionSettings.other3, paid: false },
+            };
+        } else {
+            newContributions = {
+                main: { amount: group.contributionAmount, paid: false },
+                cash: { amount: 0, paid: true },
+                sick: { amount: 0, paid: true },
+                bereavement: { amount: 0, paid: true },
+                other1: { amount: 0, paid: true },
+                other2: { amount: 0, paid: true },
+                other3: { amount: 0, paid: true },
+            };
+        }
+        
+        totalAmount = Object.values(newContributions).reduce((sum, c) => sum + (c?.amount || 0), 0);
+
         if (existingPayment) {
-          // --- UPDATE EXISTING PAYMENT ---
-          const paymentRef = doc(db, 'payments', existingPayment.id);
-          const oldContribs = existingPayment.contributions || {};
+            const paymentRef = doc(db, 'payments', existingPayment.id);
+            const oldContribs = existingPayment.contributions || {};
 
-          // Rebuild contributions object to ensure all keys exist, preserving old data
-          const newContributions: DetailedPayment['contributions'] = {
-            main: {
-              amount: isMainGroup ? fixedMainAmount : group.contributionAmount,
-              paid: oldContribs.main ? oldContribs.main.paid : false
-            },
-            cash: {
-              amount: isMainGroup ? fixedCashAmount : 0,
-              paid: isMainGroup ? (oldContribs.cash ? oldContribs.cash.paid : false) : true
-            },
-            sick: oldContribs.sick || { amount: 0, paid: false },
-            bereavement: oldContribs.bereavement || { amount: 0, paid: false },
-            other1: oldContribs.other1 || { amount: 0, paid: false },
-            other2: oldContribs.other2 || { amount: 0, paid: false },
-            other3: oldContribs.other3 || { amount: 0, paid: false }
-          };
-
-          const totalAmount = Object.values(newContributions).reduce((sum, c) => sum + (c?.amount || 0), 0);
-          
-          // Check if there are actual changes before writing to batch
-          if (JSON.stringify(oldContribs) !== JSON.stringify(newContributions) || existingPayment.totalAmount !== totalAmount) {
-              batch.update(paymentRef, { contributions: newContributions, totalAmount });
-              updatedCount++;
-          }
+            Object.keys(newContributions).forEach(key => {
+                if (oldContribs[key]) {
+                    newContributions[key as keyof DetailedPayment['contributions']].paid = oldContribs[key].paid;
+                }
+            });
+            
+            if (JSON.stringify(oldContribs) !== JSON.stringify(newContributions) || existingPayment.totalAmount !== totalAmount) {
+                batch.update(paymentRef, { contributions: newContributions, totalAmount });
+                updatedCount++;
+            }
 
         } else {
-          // --- CREATE NEW PAYMENT ---
-          createdCount++;
-          let contributions: DetailedPayment['contributions'];
-          let totalAmount: number;
-
-          if (isMainGroup) {
-            contributions = {
-              main: { amount: fixedMainAmount, paid: false },
-              cash: { amount: fixedCashAmount, paid: false },
-              sick: { amount: 0, paid: false },
-              bereavement: { amount: 0, paid: false },
-              other1: { amount: 0, paid: false },
-              other2: { amount: 0, paid: false },
-              other3: { amount: 0, paid: false },
-            };
-            totalAmount = fixedMainAmount + fixedCashAmount;
-          } else {
-            contributions = {
-              main: { amount: group.contributionAmount, paid: false },
-              cash: { amount: 0, paid: true }, // Not applicable for non-main groups
-              sick: { amount: 0, paid: true },
-              bereavement: { amount: 0, paid: true },
-              other1: { amount: 0, paid: true },
-              other2: { amount: 0, paid: true },
-              other3: { amount: 0, paid: true },
-            };
-            totalAmount = group.contributionAmount;
-          }
-
-          const newPaymentRef = doc(collection(db, 'payments'));
-          batch.set(newPaymentRef, {
-            memberId,
-            groupId: selectedGroup,
-            dueDate,
-            contributions,
-            totalAmount,
-            status: 'Unpaid',
-          });
+            createdCount++;
+            const newPaymentRef = doc(collection(db, 'payments'));
+            batch.set(newPaymentRef, {
+                memberId,
+                groupId: selectedGroup,
+                dueDate,
+                contributions: newContributions,
+                totalAmount,
+                status: 'Unpaid',
+            });
         }
       }
       
@@ -673,7 +637,7 @@ export default function KeuanganPage() {
     } finally {
       setIsGenerating(false);
     }
-  }, [db, selectedGroup, selectedMonth, allGroups, toast]);
+  }, [db, selectedGroup, selectedMonth, allGroups, contributionSettings, toast]);
 
   if (isLoadingAuth || !user) {
     return (
@@ -757,7 +721,7 @@ export default function KeuanganPage() {
                                     </div>
                                 {filteredPayments.length > 0 ? (
                                     selectedGroup === mainArisanGroup.id ? (
-                                        <DetailedPaymentTable payments={filteredPayments} onPaymentChange={handleDetailedPaymentChange} onAmountChange={handleAmountChange} contributionLabels={contributionLabels} />
+                                        <DetailedPaymentTable payments={filteredPayments} onPaymentChange={handleDetailedPaymentChange} />
                                     ) : (
                                         <SimplePaymentTable payments={filteredPayments} onStatusChange={handleSimpleStatusChange} />
                                     )

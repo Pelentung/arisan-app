@@ -22,26 +22,26 @@ import { Label } from '@/components/ui/label';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 
 const settingsSchema = z.object({
-  main: z.string().min(1, 'Label tidak boleh kosong'),
-  cash: z.string().min(1, 'Label tidak boleh kosong'),
-  sick: z.string().min(1, 'Label tidak boleh kosong'),
-  bereavement: z.string().min(1, 'Label tidak boleh kosong'),
-  other1: z.string().min(1, 'Label tidak boleh kosong'),
-  other2: z.string().min(1, 'Label tidak boleh kosong'),
-  other3: z.string().min(1, 'Label tidak boleh kosong'),
+  main: z.coerce.number().min(0, 'Nominal tidak boleh negatif'),
+  cash: z.coerce.number().min(0, 'Nominal tidak boleh negatif'),
+  sick: z.coerce.number().min(0, 'Nominal tidak boleh negatif'),
+  bereavement: z.coerce.number().min(0, 'Nominal tidak boleh negatif'),
+  other1: z.coerce.number().min(0, 'Nominal tidak boleh negatif'),
+  other2: z.coerce.number().min(0, 'Nominal tidak boleh negatif'),
+  other3: z.coerce.number().min(0, 'Nominal tidak boleh negatif'),
 });
 
-const defaultLabels: ContributionSettings = {
-  main: 'Iuran Utama',
-  cash: 'Iuran Kas',
-  sick: 'Iuran Sakit',
-  bereavement: 'Iuran Kemalangan',
-  other1: 'Lainnya 1',
-  other2: 'Lainnya 2',
-  other3: 'Lainnya 3',
+const defaultAmounts: ContributionSettings = {
+  main: 90000,
+  cash: 10000,
+  sick: 0,
+  bereavement: 0,
+  other1: 0,
+  other2: 0,
+  other3: 0,
 };
 
-export default function PengaturanPage() {
+export default function KetetapanIuranPage() {
   const db = useFirestore();
   const auth = useAuth();
   const router = useRouter();
@@ -53,7 +53,7 @@ export default function PengaturanPage() {
 
   const form = useForm<z.infer<typeof settingsSchema>>({
     resolver: zodResolver(settingsSchema),
-    defaultValues: defaultLabels,
+    defaultValues: defaultAmounts,
   });
 
   useEffect(() => {
@@ -73,14 +73,14 @@ export default function PengaturanPage() {
     if (!db || !user) return;
 
     const fetchSettings = async () => {
-      const settingsRef = doc(db, 'contributionSettings', 'labels');
+      const settingsRef = doc(db, 'contributionSettings', 'defaults');
       const docSnap = await getDoc(settingsRef);
 
       if (docSnap.exists()) {
         form.reset(docSnap.data() as ContributionSettings);
       } else {
         // If no settings exist, create them with default values
-        await setDoc(settingsRef, defaultLabels);
+        await setDoc(settingsRef, defaultAmounts);
       }
     };
 
@@ -91,17 +91,17 @@ export default function PengaturanPage() {
     if (!db) return;
     setIsSaving(true);
     try {
-      const settingsRef = doc(db, 'contributionSettings', 'labels');
+      const settingsRef = doc(db, 'contributionSettings', 'defaults');
       await setDoc(settingsRef, data, { merge: true });
       toast({
-        title: 'Pengaturan Disimpan',
-        description: 'Nama label iuran telah berhasil diperbarui.',
+        title: 'Ketetapan Disimpan',
+        description: 'Nominal iuran default telah berhasil diperbarui.',
       });
     } catch (error) {
       console.error('Error saving settings:', error);
       toast({
         title: 'Gagal Menyimpan',
-        description: 'Terjadi kesalahan saat menyimpan pengaturan.',
+        description: 'Terjadi kesalahan saat menyimpan ketetapan iuran.',
         variant: 'destructive',
       });
     } finally {
@@ -124,14 +124,13 @@ export default function PengaturanPage() {
       </Sidebar>
       <SidebarInset>
         <div className="flex flex-col min-h-screen">
-          <Header title="Pengaturan Aplikasi" />
+          <Header title="Ketetapan Iuran" />
           <main className="flex-1 p-4 md:p-6">
             <Card>
               <CardHeader>
-                <CardTitle>Pengaturan Label Iuran</CardTitle>
+                <CardTitle>Ketetapan Nominal Iuran</CardTitle>
                 <CardDescription>
-                  Ubah nama label untuk berbagai jenis iuran. Perubahan ini akan
-                  tercermin di halaman Pengelolaan Keuangan.
+                  Atur nominal default untuk setiap jenis iuran. Nominal ini akan digunakan secara otomatis saat membuat iuran baru di halaman Pengelolaan Keuangan.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -143,9 +142,9 @@ export default function PengaturanPage() {
                         name="main"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Label Iuran Utama</FormLabel>
+                            <FormLabel>Iuran Utama</FormLabel>
                             <FormControl>
-                              <Input {...field} />
+                              <Input type="number" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -156,9 +155,9 @@ export default function PengaturanPage() {
                         name="cash"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Label Iuran Kas</FormLabel>
+                            <FormLabel>Iuran Kas</FormLabel>
                             <FormControl>
-                              <Input {...field} />
+                              <Input type="number" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -169,9 +168,9 @@ export default function PengaturanPage() {
                         name="sick"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Label Iuran Sakit</FormLabel>
+                            <FormLabel>Iuran Sakit</FormLabel>
                             <FormControl>
-                              <Input {...field} />
+                              <Input type="number" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -182,9 +181,9 @@ export default function PengaturanPage() {
                         name="bereavement"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Label Iuran Kemalangan</FormLabel>
+                            <FormLabel>Iuran Kemalangan</FormLabel>
                             <FormControl>
-                              <Input {...field} />
+                              <Input type="number" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -195,9 +194,9 @@ export default function PengaturanPage() {
                         name="other1"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Label Lainnya 1</FormLabel>
+                            <FormLabel>Lainnya 1</FormLabel>
                             <FormControl>
-                              <Input {...field} />
+                              <Input type="number" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -208,9 +207,9 @@ export default function PengaturanPage() {
                         name="other2"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Label Lainnya 2</FormLabel>
+                            <FormLabel>Lainnya 2</FormLabel>
                             <FormControl>
-                              <Input {...field} />
+                              <Input type="number" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -221,9 +220,9 @@ export default function PengaturanPage() {
                         name="other3"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Label Lainnya 3</FormLabel>
+                            <FormLabel>Lainnya 3</FormLabel>
                             <FormControl>
-                              <Input {...field} />
+                              <Input type="number" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -237,7 +236,7 @@ export default function PengaturanPage() {
                         ) : (
                           <Save className="mr-2 h-4 w-4" />
                         )}
-                        Simpan Perubahan
+                        Simpan Ketetapan
                       </Button>
                     </div>
                   </form>
@@ -250,4 +249,3 @@ export default function PengaturanPage() {
     </SidebarProvider>
   );
 }
-
