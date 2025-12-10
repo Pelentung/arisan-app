@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "arisanData": {
@@ -194,7 +195,7 @@
         "contributions": {
           "type": "object",
           "patternProperties": {
-            ".*": {
+            "^[a-zA-Z0-9_]+$": {
               "type": "object",
               "properties": {
                 "amount": {
@@ -203,7 +204,8 @@
                 "paid": {
                   "type": "boolean"
                 }
-              }
+              },
+              "required": ["amount", "paid"]
             }
           }
         },
@@ -290,11 +292,27 @@
         "cash": { "type": "number", "description": "Default amount for the cash contribution." },
         "sick": { "type": "number", "description": "Default amount for the sick fund contribution." },
         "bereavement": { "type": "number", "description": "Default amount for the bereavement fund contribution." },
-        "other1": { "type": "number", "description": "Default amount for the first other contribution." },
-        "other2": { "type": "number", "description": "Default amount for the second other contribution." },
-        "other3": { "type": "number", "description": "Default amount for the third other contribution." }
+        "others": {
+          "type": "object",
+          "description": "A map of dynamic 'other' contributions, where the key is the contribution ID and the value is the amount.",
+          "patternProperties": {
+            "^[a-zA-Z0-9_]+$": { "type": "number" }
+          }
+        },
+        "otherContributions": {
+            "type": "array",
+            "description": "An array containing metadata (id and name) for each dynamic 'other' contribution.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "name": { "type": "string" }
+                },
+                "required": ["id", "name"]
+            }
+        }
       },
-      "required": [ "main", "cash", "sick", "bereavement", "other1", "other2", "other3" ]
+      "required": [ "main", "cash", "sick", "bereavement", "others", "otherContributions" ]
     }
   },
   "auth": {
@@ -331,11 +349,11 @@
       },
       "description": "Stores announcements."
     },
-    "/contributionSettings/defaults": {
+    "/contributionSettings/{settingId}": {
       "schema": {
         "$ref": "#/entities/contributionSettings"
       },
-      "description": "Stores the global default amounts for contribution types. There should only be one document with the ID 'defaults'."
+      "description": "Stores the global default amounts for contribution types, identified by month (e.g., '2024-07')."
     }
   }
 }

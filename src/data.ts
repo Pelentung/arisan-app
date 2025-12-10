@@ -1,3 +1,4 @@
+'use client';
 
 import { collection, onSnapshot, query, Firestore } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -52,10 +53,10 @@ export interface Expense {
     date: string;
     description: string;
     amount: number;
-    category: 'Sakit' | 'Kemalangan' | 'Iuran Anggota' | 'Talangan Kas' | 'Lainnya';
+    category: 'Sakit' | 'Kemalangan' | 'Talangan Kas' | 'Lainnya';
 }
 
-export interface Note {
+export interface Announcement {
   id: string;
   title: string;
   content: string;
@@ -65,18 +66,25 @@ export interface Note {
 
 
 export interface OtherContribution {
-    id: string;
-    description: string;
-    amount: number;
+    id: string; // e.g., 'other_17212345'
+    name: string; // e.g., 'Iuran Agustusan'
 }
 
 export interface ContributionSettings {
-    main: number;
-    cash: number;
-    sick: number;
-    bereavement: number;
-    others: OtherContribution[];
+  id?: string; // Should be a singleton, e.g., 'defaults-2024-07'
+  main: number;
+  cash: number;
+  sick: number;
+  bereavement: number;
+  // Each key is an OtherContribution.id, value is the amount
+  others: Record<string, number>; 
+  // Metadata for the 'others' to store their names
+  otherContributions: OtherContribution[];
 }
+
+
+// Global array to hold all active listeners
+let activeListeners: (() => void)[] = [];
 
 export const subscribeToData = (db: Firestore, collectionName: string, callback: (data: any[]) => void) => {
     if (!db) return () => {};
@@ -99,6 +107,11 @@ export const subscribeToData = (db: Firestore, collectionName: string, callback:
         callback(data);
     }, 
     (serverError) => {
+        // Prevent firing error on logout when listeners are automatically detached
+        if (serverError.code === 'permission-denied') {
+            console.warn(`Permission denied for ${collectionName}. This might be expected on logout.`);
+            return;
+        }
         const permissionError = new FirestorePermissionError({
             path: collectionName,
             operation: 'list',
@@ -106,5 +119,19 @@ export const subscribeToData = (db: Firestore, collectionName: string, callback:
         errorEmitter.emit('permission-error', permissionError);
     });
 
-    return unsubscribe;
+    // Register the listener
+    activeListeners.push(unsubscribe);
+
+    // Return a wrapper function that also removes the listener from the active list
+    return () => {
+        unsubscribe();
+        activeListeners = activeListeners.filter(listener => listener !== unsubscribe);
+    };
+};
+
+// Function to unsubscribe from all active listeners, to be called on logout
+export const unsubscribeAll = () => {
+    console.log(`Unsubscribing from ${activeListeners.length} listeners.`);
+    activeListeners.forEach(unsubscribe => unsubscribe());
+    activeListeners = [];
 };

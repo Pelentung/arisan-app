@@ -1,17 +1,17 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { useForm } from 'react-hook-form';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth, useFirestore } from '@/firebase';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { doc, getDoc, setDoc, collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
-import { Loader2, Save } from 'lucide-react';
+import { Loader2, Save, PlusCircle, Trash2, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import type { ContributionSettings } from '@/app/data';
+import type { ContributionSettings, OtherContribution } from '@/app/data';
 import { SidebarProvider, Sidebar, SidebarInset } from '@/components/ui/sidebar';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
 import { Header } from '@/components/layout/header';
@@ -22,25 +22,31 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format, getMonth, getYear, subMonths } from 'date-fns';
 import { id } from 'date-fns/locale';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+
+const otherContributionSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, 'Nama iuran tidak boleh kosong'),
+});
 
 const settingsSchema = z.object({
   main: z.coerce.number().min(0, 'Nominal tidak boleh negatif'),
   cash: z.coerce.number().min(0, 'Nominal tidak boleh negatif'),
   sick: z.coerce.number().min(0, 'Nominal tidak boleh negatif'),
   bereavement: z.coerce.number().min(0, 'Nominal tidak boleh negatif'),
-  other1: z.coerce.number().min(0, 'Nominal tidak boleh negatif'),
-  other2: z.coerce.number().min(0, 'Nominal tidak boleh negatif'),
-  other3: z.coerce.number().min(0, 'Nominal tidak boleh negatif'),
+  otherContributions: z.array(otherContributionSchema),
+  others: z.record(z.coerce.number().min(0, 'Nominal tidak boleh negatif')),
 });
 
-const defaultAmounts: z.infer<typeof settingsSchema> = {
+type FormValues = z.infer<typeof settingsSchema>;
+
+const defaultAmounts: FormValues = {
   main: 90000,
   cash: 10000,
   sick: 0,
   bereavement: 0,
-  other1: 0,
-  other2: 0,
-  other3: 0,
+  otherContributions: [],
+  others: {},
 };
 
 const generateMonthOptions = () => {
@@ -55,6 +61,55 @@ const generateMonthOptions = () => {
     return options;
 };
 
+const OtherContributionDialog = ({
+    contribution,
+    isOpen,
+    onClose,
+    onSave,
+}: {
+    contribution: Partial<OtherContribution> | null;
+    isOpen: boolean;
+    onClose: () => void;
+    onSave: (contribution: OtherContribution) => void;
+}) => {
+    const [name, setName] = useState('');
+    const { toast } = useToast();
+
+    useEffect(() => {
+        if (isOpen && contribution) {
+            setName(contribution.name || '');
+        }
+    }, [isOpen, contribution]);
+    
+    const handleSave = () => {
+        if (!name.trim()) {
+            toast({ title: "Nama Iuran Kosong", description: "Nama iuran tidak boleh kosong.", variant: "destructive" });
+            return;
+        }
+        onSave({ id: contribution?.id || `other_${Date.now()}`, name });
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>{contribution?.id ? 'Ubah Nama Iuran' : 'Tambah Iuran Lainnya'}</DialogTitle>
+                    <DialogDescription>Masukkan nama yang deskriptif untuk iuran ini.</DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                    <Label htmlFor="iuran-name">Nama Iuran</Label>
+                    <Input id="iuran-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Contoh: Iuran Agustusan" />
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose}>Batal</Button>
+                    <Button onClick={handleSave}>Simpan</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
+
 export default function KetetapanIuranPage() {
   const db = useFirestore();
   const auth = useAuth();
@@ -66,13 +121,33 @@ export default function KetetapanIuranPage() {
   const [isFetchingSettings, setIsFetchingSettings] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  const [isOtherContribDialogOpen, setIsOtherContribDialogOpen] = useState(false);
+  const [selectedOtherContrib, setSelectedOtherContrib] = useState<Partial<OtherContribution> | null>(null);
+
   const monthOptions = useMemo(() => generateMonthOptions(), []);
   const [selectedMonth, setSelectedMonth] = useState(monthOptions[0].value);
 
-  const form = useForm<z.infer<typeof settingsSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(settingsSchema),
     defaultValues: defaultAmounts,
   });
+
+  const { fields, append, remove, update } = useFieldArray({
+    control: form.control,
+    name: "otherContributions",
+  });
+
+  const resetForm = useCallback((data: ContributionSettings) => {
+        const formData: FormValues = {
+            main: data.main ?? 0,
+            cash: data.cash ?? 0,
+            sick: data.sick ?? 0,
+            bereavement: data.bereavement ?? 0,
+            otherContributions: data.otherContributions ?? [],
+            others: data.others ?? {},
+        };
+        form.reset(formData);
+  }, [form]);
 
   useEffect(() => {
     if (!auth) return;
@@ -96,26 +171,51 @@ export default function KetetapanIuranPage() {
       const docSnap = await getDoc(settingsRef);
 
       if (docSnap.exists()) {
-        form.reset(docSnap.data() as ContributionSettings);
+        resetForm(docSnap.data() as ContributionSettings);
       } else {
-        // If no settings for the selected month, find the most recent one and use it as a base
         const q = query(collection(db, 'contributionSettings'), orderBy('__name__', 'desc'), limit(1));
         const querySnapshot = await getDocs(q);
         if (!querySnapshot.empty) {
             const mostRecentData = querySnapshot.docs[0].data();
-            form.reset(mostRecentData as ContributionSettings);
+            resetForm(mostRecentData as ContributionSettings);
         } else {
-            // Fallback to hardcoded defaults if nothing is in the DB
-            form.reset(defaultAmounts);
+            resetForm(defaultAmounts as ContributionSettings);
         }
       }
       setIsFetchingSettings(false);
     };
 
     fetchSettings();
-  }, [db, user, form, selectedMonth]);
+  }, [db, user, form, selectedMonth, resetForm]);
 
-  const onSubmit = async (data: z.infer<typeof settingsSchema>) => {
+  const handleOpenDialog = (contribution: Partial<OtherContribution> | null = null) => {
+    setSelectedOtherContrib(contribution);
+    setIsOtherContribDialogOpen(true);
+  };
+  
+  const handleSaveOtherContribution = (contribution: OtherContribution) => {
+    const existingIndex = fields.findIndex(f => f.id === contribution.id);
+    if (existingIndex > -1) {
+        update(existingIndex, contribution);
+    } else {
+        append(contribution);
+        // Also add a default amount for the new contribution
+        form.setValue(`others.${contribution.id}`, 0);
+    }
+    setIsOtherContribDialogOpen(false);
+    setSelectedOtherContrib(null);
+  };
+
+  const handleRemoveOtherContribution = (index: number) => {
+      const idToRemove = fields[index].id;
+      const currentOthers = form.getValues('others');
+      delete currentOthers[idToRemove];
+      form.setValue('others', currentOthers);
+      remove(index);
+  };
+
+
+  const onSubmit = async (data: FormValues) => {
     if (!db) return;
     setIsSaving(true);
     try {
@@ -154,141 +254,106 @@ export default function KetetapanIuranPage() {
         <div className="flex flex-col min-h-screen">
           <Header title="Ketetapan Iuran" />
           <main className="flex-1 p-4 md:p-6">
-            <Card>
-              <CardHeader>
-                <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
-                    <div>
-                        <CardTitle>Ketetapan Nominal Iuran</CardTitle>
-                        <CardDescription>
-                          Atur nominal default untuk setiap jenis iuran per bulan. Nominal ini akan digunakan saat membuat iuran baru.
-                        </CardDescription>
-                    </div>
-                    <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                        <SelectTrigger className="w-full sm:w-[200px]">
-                            <SelectValue placeholder="Pilih Bulan" />
-                        </SelectTrigger>
-                        <SelectContent>{monthOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-                    </Select>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {isFetchingSettings ? (
-                    <div className="flex items-center justify-center h-60">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    </div>
-                ) : (
-                    <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <FormField
-                            control={form.control}
-                            name="main"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Iuran Utama</FormLabel>
-                                <FormControl>
-                                <Input type="number" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="cash"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Iuran Kas</FormLabel>
-                                <FormControl>
-                                <Input type="number" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="sick"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Iuran Sakit</FormLabel>
-                                <FormControl>
-                                <Input type="number" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="bereavement"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Iuran Kemalangan</FormLabel>
-                                <FormControl>
-                                <Input type="number" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="other1"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Lainnya 1</FormLabel>
-                                <FormControl>
-                                <Input type="number" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="other2"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Lainnya 2</FormLabel>
-                                <FormControl>
-                                <Input type="number" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="other3"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Lainnya 3</FormLabel>
-                                <FormControl>
-                                <Input type="number" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                <Card>
+                  <CardHeader>
+                    <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
+                        <div>
+                            <CardTitle>Ketetapan Nominal Iuran</CardTitle>
+                            <CardDescription>
+                              Atur nominal default untuk setiap jenis iuran per bulan.
+                            </CardDescription>
                         </div>
-                        <div className="flex justify-end pt-4">
-                        <Button type="submit" disabled={isSaving}>
-                            {isSaving ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                            <Save className="mr-2 h-4 w-4" />
-                            )}
-                            Simpan Ketetapan
-                        </Button>
+                        <Select value={selectedMonth} onValueChange={setSelectedMonth} disabled={isFetchingSettings}>
+                            <SelectTrigger className="w-full sm:w-[200px]">
+                                <SelectValue placeholder="Pilih Bulan" />
+                            </SelectTrigger>
+                            <SelectContent>{monthOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+                        </Select>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {isFetchingSettings ? (
+                        <div className="flex items-center justify-center h-96">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
-                    </form>
-                    </Form>
-                )}
-              </CardContent>
-            </Card>
+                    ) : (
+                        <div className="space-y-6">
+                            {/* --- Main Contributions --- */}
+                            <Card>
+                                <CardHeader><CardTitle>Iuran Pokok</CardTitle></CardHeader>
+                                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <FormField control={form.control} name="main" render={({ field }) => (<FormItem><FormLabel>Iuran Utama</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="cash" render={({ field }) => (<FormItem><FormLabel>Iuran Kas</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                </CardContent>
+                            </Card>
+
+                             {/* --- Social Contributions --- */}
+                            <Card>
+                                <CardHeader><CardTitle>Iuran Sosial</CardTitle></CardHeader>
+                                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <FormField control={form.control} name="sick" render={({ field }) => (<FormItem><FormLabel>Iuran Sakit</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="bereavement" render={({ field }) => (<FormItem><FormLabel>Iuran Kemalangan</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                </CardContent>
+                            </Card>
+                            
+                            {/* --- Other Contributions --- */}
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between">
+                                    <div>
+                                        <CardTitle>Iuran Lainnya</CardTitle>
+                                        <CardDescription>Tambah, ubah, atau hapus iuran insidental.</CardDescription>
+                                    </div>
+                                    <Button type="button" variant="outline" size="sm" onClick={() => handleOpenDialog()}><PlusCircle className="mr-2"/>Tambah Iuran</Button>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                {fields.map((field, index) => (
+                                    <div key={field.id} className="flex items-center gap-4 p-3 rounded-lg border bg-background">
+                                        <FormField
+                                            control={form.control}
+                                            name={`others.${field.id}`}
+                                            render={({ field: amountField }) => (
+                                                <FormItem className="flex-1">
+                                                    <FormLabel>{form.getValues('otherContributions')[index].name}</FormLabel>
+                                                    <FormControl><Input type="number" {...amountField} /></FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <div className='flex items-end h-full gap-2 pt-8'>
+                                            <Button type="button" size="icon" variant="ghost" onClick={() => handleOpenDialog(field)}><Edit className="h-4 w-4"/></Button>
+                                            <Button type="button" size="icon" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => handleRemoveOtherContribution(index)}><Trash2 className="h-4 w-4"/></Button>
+                                        </div>
+                                    </div>
+                                ))}
+                                {fields.length === 0 && <p className="text-center text-sm text-muted-foreground py-4">Belum ada iuran lainnya.</p>}
+                                </CardContent>
+                            </Card>
+
+                            <div className="flex justify-end pt-4">
+                                <Button type="submit" disabled={isSaving}>
+                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                    Simpan Ketetapan untuk {monthOptions.find(m => m.value === selectedMonth)?.label}
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </form>
+            </Form>
           </main>
         </div>
+        
+        {isOtherContribDialogOpen && (
+             <OtherContributionDialog 
+                isOpen={isOtherContribDialogOpen}
+                onClose={() => setIsOtherContribDialogOpen(false)}
+                contribution={selectedOtherContrib}
+                onSave={handleSaveOtherContribution}
+             />
+        )}
       </SidebarInset>
     </SidebarProvider>
   );
