@@ -15,7 +15,7 @@ export function AdvertisementSection() {
     useEffect(() => {
         const interval = setInterval(() => {
             setVisibleAdIndex(currentIndex => (currentIndex + 1) % adRefs.length);
-        }, 15000); // Rotate every 15 seconds
+        }, 5000); // Rotate every 5 seconds
 
         return () => clearInterval(interval); // Cleanup on component unmount
     }, [adRefs.length]);
@@ -96,7 +96,7 @@ export function AdvertisementSection() {
 
     
   return (
-    <div className="p-2 flex justify-center items-center gap-4 min-h-[60px]">
+    <div className="p-2 flex justify-center items-center gap-4 min-h-[300px]">
         {/* Container for Ad 1 */}
         <div ref={adContainerRef1} className={cn("flex justify-center items-center", { 'hidden': visibleAdIndex !== 0 })}>
           {/* Ad 1 will be injected here */}
