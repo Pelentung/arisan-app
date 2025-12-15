@@ -1,6 +1,8 @@
+
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { AlertCircle } from 'lucide-react';
 
 // Define the ad configurations in an array for easier management
 const adConfigs = [
@@ -23,20 +25,18 @@ const adConfigs = [
 export function AdvertisementSection() {
     const adContainerRef = useRef<HTMLDivElement>(null);
     const [currentAdIndex, setCurrentAdIndex] = useState(0);
+    const [isAdLoaded, setIsAdLoaded] = useState(false);
 
     useEffect(() => {
-        // This function will clear the container and inject the current ad script
         const loadAd = () => {
             const adContainer = adContainerRef.current;
             if (!adContainer) return;
 
-            // 1. Clear previous ad content
             adContainer.innerHTML = '';
+            setIsAdLoaded(false); 
 
-            // 2. Get the config for the current ad
             const adConfig = adConfigs[currentAdIndex];
 
-            // 3. Create and inject the new ad scripts
             const optionsScript = document.createElement('script');
             optionsScript.type = 'text/javascript';
             optionsScript.innerHTML = `atOptions = ${JSON.stringify(adConfig)};`;
@@ -44,28 +44,52 @@ export function AdvertisementSection() {
             const invokeScript = document.createElement('script');
             invokeScript.type = 'text/javascript';
             invokeScript.src = `//www.highperformanceformat.com/${adConfig.key}/invoke.js`;
+            invokeScript.async = true;
 
             adContainer.appendChild(optionsScript);
             adContainer.appendChild(invokeScript);
+
+            // Simple check to see if the ad script added any content.
+            // This is not foolproof but works for many ad scripts.
+            const observer = new MutationObserver(() => {
+                if (adContainer.children.length > 2) { // More than the 2 scripts we added
+                    setIsAdLoaded(true);
+                    observer.disconnect();
+                }
+            });
+            observer.observe(adContainer, { childList: true });
+
+            // Fallback timer
+            setTimeout(() => {
+                 if (adContainer.children.length <= 2) {
+                    setIsAdLoaded(false);
+                 }
+                 observer.disconnect();
+            }, 2000);
         };
 
-        loadAd(); // Load the ad when the index changes
+        loadAd();
 
-        // Set up the interval to rotate the ad index
         const interval = setInterval(() => {
             setCurrentAdIndex(prevIndex => (prevIndex + 1) % adConfigs.length);
-        }, 5000); // Rotate every 5 seconds
+        }, 8000); // Rotate every 8 seconds
 
-        return () => clearInterval(interval); // Cleanup on component unmount
+        return () => clearInterval(interval);
 
-    }, [currentAdIndex]); // Re-run this effect whenever the ad index changes
+    }, [currentAdIndex]);
 
     return (
-        <div className="p-2 flex justify-center items-center gap-4 min-h-[100px]">
-            {/* Single container for all ads */}
+        <div className="p-2 flex justify-center items-center gap-4 min-h-[100px] border-dashed border rounded-lg bg-muted/50">
             <div ref={adContainerRef} className="flex justify-center items-center">
-              {/* Ad will be injected here by the useEffect hook */}
+              {/* Ad will be injected here */}
             </div>
+             {!isAdLoaded && (
+                <div className="text-center text-muted-foreground text-sm flex flex-col items-center gap-2">
+                    <AlertCircle className="w-5 h-5" />
+                    <span>Area Iklan</span>
+                    <span className="text-xs">(Jika tidak muncul, mungkin terblokir oleh Ad Blocker Anda)</span>
+                </div>
+            )}
         </div>
     );
 }
