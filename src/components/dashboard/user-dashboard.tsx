@@ -14,6 +14,7 @@ import Image from 'next/image';
 import { AllMembersList } from './all-members-list';
 import { CurrentWinnerCard } from './current-winner-card';
 import { WeatherForecast } from './weather-forecast';
+import { AdvertisementSection } from './advertisement-section';
 
 
 export function UserDashboard() {
@@ -49,6 +50,8 @@ export function UserDashboard() {
                          <WeatherForecast />
                     </div>
                  </div>
+
+                 <AdvertisementSection />
 
                  <Card>
                     <CardHeader>
