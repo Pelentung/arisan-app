@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 
 export function AdvertisementSection() {
     const adContainerRef1 = useRef<HTMLDivElement>(null);
+    const adContainerRef2 = useRef<HTMLDivElement>(null);
 
     // Ad 1
     useEffect(() => {
@@ -31,12 +32,39 @@ export function AdvertisementSection() {
         }
     }, []);
 
+    // Ad 2
+    useEffect(() => {
+        const adContainer = adContainerRef2.current;
+        if (adContainer && adContainer.children.length === 0) {
+            const optionsScript = document.createElement('script');
+            optionsScript.type = 'text/javascript';
+            optionsScript.innerHTML = `
+                atOptions = {
+                    'key' : 'f52dac102624c4a42d0767b387e4d719',
+                    'format' : 'iframe',
+                    'height' : 50,
+                    'width' : 320,
+                    'params' : {}
+                };
+            `;
+            adContainer.appendChild(optionsScript);
+
+            const invokeScript = document.createElement('script');
+            invokeScript.type = 'text/javascript';
+            invokeScript.src = 'https://www.highperformanceformat.com/f52dac102624c4a42d0767b387e4d719/invoke.js';
+            adContainer.appendChild(invokeScript);
+        }
+    }, []);
+
     
   return (
     <Card>
-      <CardContent className="p-2 flex justify-center items-center min-h-[60px]">
+      <CardContent className="p-2 flex flex-wrap justify-center items-center gap-4 min-h-[60px]">
         <div ref={adContainerRef1} className="flex justify-center items-center">
-          {/* Adsterra ad 1 will be injected here */}
+          {/* Ad 1 will be injected here */}
+        </div>
+        <div ref={adContainerRef2} className="flex justify-center items-center">
+          {/* Ad 2 will be injected here */}
         </div>
       </CardContent>
     </Card>
