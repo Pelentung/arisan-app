@@ -17,13 +17,6 @@ const adConfigs = [
         height: 50,
         width: 320,
         params: {}
-    },
-    {
-        key: '83e38af17d0ff3434faf35a14d6921e3',
-        format: 'iframe',
-        height: 300,
-        width: 160,
-        params: {}
     }
 ];
 
@@ -68,7 +61,7 @@ export function AdvertisementSection() {
     }, [currentAdIndex]); // Re-run this effect whenever the ad index changes
 
     return (
-        <div className="p-2 flex justify-center items-center gap-4 min-h-[300px]">
+        <div className="p-2 flex justify-center items-center gap-4 min-h-[100px]">
             {/* Single container for all ads */}
             <div ref={adContainerRef} className="flex justify-center items-center">
               {/* Ad will be injected here by the useEffect hook */}
