@@ -26,6 +26,12 @@ export default function RootLayout({
           rel="stylesheet"
         />
         <meta name="theme-color" content="#1569C7" />
+        <Script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8805948047019009"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
       </head>
       <body className={cn('font-body antialiased min-h-screen bg-background')}>
         <FirebaseClientProvider>
