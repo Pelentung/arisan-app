@@ -1,116 +1,78 @@
-
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { cn } from '@/lib/utils';
+
+// Define the ad configurations in an array for easier management
+const adConfigs = [
+    {
+        key: '4a8bcfd01f80e85866ef6313080077d4',
+        format: 'iframe',
+        height: 60,
+        width: 468,
+        params: {}
+    },
+    {
+        key: 'f52dac102624c4a42d0767b387e4d719',
+        format: 'iframe',
+        height: 50,
+        width: 320,
+        params: {}
+    },
+    {
+        key: '83e38af17d0ff3434faf35a14d6921e3',
+        format: 'iframe',
+        height: 300,
+        width: 160,
+        params: {}
+    }
+];
 
 export function AdvertisementSection() {
-    const adContainerRef1 = useRef<HTMLDivElement>(null);
-    const adContainerRef2 = useRef<HTMLDivElement>(null);
-    const adContainerRef3 = useRef<HTMLDivElement>(null);
-    const [visibleAdIndex, setVisibleAdIndex] = useState(0);
-    const adRefs = [adContainerRef1, adContainerRef2, adContainerRef3];
+    const adContainerRef = useRef<HTMLDivElement>(null);
+    const [currentAdIndex, setCurrentAdIndex] = useState(0);
 
-    // Effect to rotate the ads
     useEffect(() => {
+        // This function will clear the container and inject the current ad script
+        const loadAd = () => {
+            const adContainer = adContainerRef.current;
+            if (!adContainer) return;
+
+            // 1. Clear previous ad content
+            adContainer.innerHTML = '';
+
+            // 2. Get the config for the current ad
+            const adConfig = adConfigs[currentAdIndex];
+
+            // 3. Create and inject the new ad scripts
+            const optionsScript = document.createElement('script');
+            optionsScript.type = 'text/javascript';
+            optionsScript.innerHTML = `atOptions = ${JSON.stringify(adConfig)};`;
+            
+            const invokeScript = document.createElement('script');
+            invokeScript.type = 'text/javascript';
+            invokeScript.src = `//www.highperformanceformat.com/${adConfig.key}/invoke.js`;
+
+            adContainer.appendChild(optionsScript);
+            adContainer.appendChild(invokeScript);
+        };
+
+        loadAd(); // Load the ad when the index changes
+
+        // Set up the interval to rotate the ad index
         const interval = setInterval(() => {
-            setVisibleAdIndex(currentIndex => (currentIndex + 1) % adRefs.length);
+            setCurrentAdIndex(prevIndex => (prevIndex + 1) % adConfigs.length);
         }, 5000); // Rotate every 5 seconds
 
         return () => clearInterval(interval); // Cleanup on component unmount
-    }, [adRefs.length]);
 
+    }, [currentAdIndex]); // Re-run this effect whenever the ad index changes
 
-    // Ad 1 script injection
-    useEffect(() => {
-        const adContainer = adContainerRef1.current;
-        // Check if the container is empty to prevent re-adding scripts on re-renders
-        if (adContainer && adContainer.children.length === 0) {
-            const optionsScript = document.createElement('script');
-            optionsScript.type = 'text/javascript';
-            optionsScript.innerHTML = `
-                atOptions = {
-                    'key' : '4a8bcfd01f80e85866ef6313080077d4',
-                    'format' : 'iframe',
-                    'height' : 60,
-                    'width' : 468,
-                    'params' : {}
-                };
-            `;
-            adContainer.appendChild(optionsScript);
-
-            const invokeScript = document.createElement('script');
-            invokeScript.type = 'text/javascript';
-            invokeScript.src = '//www.highperformanceformat.com/4a8bcfd01f80e85866ef6313080077d4/invoke.js';
-            adContainer.appendChild(invokeScript);
-        }
-    }, []);
-
-    // Ad 2 script injection
-    useEffect(() => {
-        const adContainer = adContainerRef2.current;
-        if (adContainer && adContainer.children.length === 0) {
-            const optionsScript = document.createElement('script');
-            optionsScript.type = 'text/javascript';
-            optionsScript.innerHTML = `
-                atOptions = {
-                    'key' : 'f52dac102624c4a42d0767b387e4d719',
-                    'format' : 'iframe',
-                    'height' : 50,
-                    'width' : 320,
-                    'params' : {}
-                };
-            `;
-            adContainer.appendChild(optionsScript);
-
-            const invokeScript = document.createElement('script');
-            invokeScript.type = 'text/javascript';
-            invokeScript.src = '//www.highperformanceformat.com/f52dac102624c4a42d0767b387e4d719/invoke.js';
-            adContainer.appendChild(invokeScript);
-        }
-    }, []);
-
-    // Ad 3 script injection
-    useEffect(() => {
-        const adContainer = adContainerRef3.current;
-        if (adContainer && adContainer.children.length === 0) {
-            const optionsScript = document.createElement('script');
-            optionsScript.type = 'text/javascript';
-            optionsScript.innerHTML = `
-                atOptions = {
-                    'key' : '83e38af17d0ff3434faf35a14d6921e3',
-                    'format' : 'iframe',
-                    'height' : 300,
-                    'width' : 160,
-                    'params' : {}
-                };
-            `;
-            adContainer.appendChild(optionsScript);
-
-            const invokeScript = document.createElement('script');
-            invokeScript.type = 'text/javascript';
-            invokeScript.src = '//www.highperformanceformat.com/83e38af17d0ff3434faf35a14d6921e3/invoke.js';
-            adContainer.appendChild(invokeScript);
-        }
-    }, []);
-
-    
-  return (
-    <div className="p-2 flex justify-center items-center gap-4 min-h-[300px]">
-        {/* Container for Ad 1 */}
-        <div ref={adContainerRef1} className={cn("flex justify-center items-center", { 'hidden': visibleAdIndex !== 0 })}>
-          {/* Ad 1 will be injected here */}
+    return (
+        <div className="p-2 flex justify-center items-center gap-4 min-h-[300px]">
+            {/* Single container for all ads */}
+            <div ref={adContainerRef} className="flex justify-center items-center">
+              {/* Ad will be injected here by the useEffect hook */}
+            </div>
         </div>
-        
-        {/* Container for Ad 2 */}
-        <div ref={adContainerRef2} className={cn("flex justify-center items-center", { 'hidden': visibleAdIndex !== 1 })}>
-          {/* Ad 2 will be injected here */}
-        </div>
-
-        {/* Container for Ad 3 */}
-        <div ref={adContainerRef3} className={cn("flex justify-center items-center", { 'hidden': visibleAdIndex !== 2 })}>
-          {/* Ad 3 will be injected here */}
-        </div>
-    </div>
-  );
+    );
 }
