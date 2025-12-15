@@ -26,12 +26,6 @@ export default function RootLayout({
           rel="stylesheet"
         />
         <meta name="theme-color" content="#1569C7" />
-        <Script
-          async
-          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADMOB_APP_ID}`}
-          crossOrigin="anonymous"
-          strategy="lazyOnload"
-        />
       </head>
       <body className={cn('font-body antialiased min-h-screen bg-background')}>
         <FirebaseClientProvider>

@@ -1,31 +1,39 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 
-declare global {
-  interface Window {
-    adsbygoogle: any;
-  }
-}
-
 export function AdvertisementSection() {
+    const adContainerRef = useRef<HTMLDivElement>(null);
+    const adsterraId = process.env.NEXT_PUBLIC_ADSTERRA_AD_ID;
+
     useEffect(() => {
-        try {
-            (window.adsbygoogle = window.adsbygoogle || []).push({});
-        } catch (err) {
-            console.error(err);
+        if (adContainerRef.current && !adContainerRef.current.querySelector('script')) {
+            const script = document.createElement('script');
+            script.type = 'text/javascript';
+            script.innerHTML = `
+                atOptions = {
+                    'key' : '${adsterraId}',
+                    'format' : 'native',
+                    'height' : 250,
+                    'width' : 300,
+                    'params' : {}
+                };
+            `;
+            adContainerRef.current.appendChild(script);
+
+            const adScript = document.createElement('script');
+            adScript.type = 'text/javascript';
+            adScript.src = '//www.profitabledisplaynetwork.com/e5/a8/19/e5a8192329391d575727937402f153b9.js';
+            adContainerRef.current.appendChild(adScript);
         }
-    }, []);
-
-    const adClientId = process.env.NEXT_PUBLIC_ADMOB_APP_ID;
-    const adSlotId = process.env.NEXT_PUBLIC_ADMOB_AD_UNIT_ID;
-
-    if (!adClientId || !adSlotId) {
+    }, [adsterraId]);
+    
+    if (!adsterraId) {
         return (
             <Card>
                 <CardContent className="p-4 text-center text-muted-foreground">
-                    ID Iklan belum dikonfigurasi.
+                    ID Iklan Adsterra belum dikonfigurasi.
                 </CardContent>
             </Card>
         );
@@ -33,15 +41,8 @@ export function AdvertisementSection() {
     
   return (
     <Card>
-      <CardContent className="p-2">
-        <ins
-          className="adsbygoogle"
-          style={{ display: 'block' }}
-          data-ad-client={adClientId}
-          data-ad-slot={adSlotId}
-          data-ad-format="auto"
-          data-full-width-responsive="true"
-        ></ins>
+      <CardContent ref={adContainerRef} className="p-2 flex justify-center items-center">
+        {/* Adsterra ad will be injected here */}
       </CardContent>
     </Card>
   );
