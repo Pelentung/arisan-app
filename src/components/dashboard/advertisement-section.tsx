@@ -1,68 +1,47 @@
 'use client';
 
-import Image from 'next/image';
+import { useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from '@/components/ui/carousel';
 
-const ads = [
-  {
-    id: 1,
-    imageUrl: 'https://picsum.photos/seed/ad1/800/400',
-    title: 'Promosi Spesial Minggu Ini!',
-    description: 'Dapatkan diskon 50% untuk semua produk fashion. Jangan sampai ketinggalan!',
-    hint: 'fashion sale',
-  },
-  {
-    id: 2,
-    imageUrl: 'https://picsum.photos/seed/ad2/800/400',
-    title: 'Kuliner Lezat, Harga Bersahabat',
-    description: 'Cicipi menu baru kami. Pesan antar gratis untuk wilayah Anda.',
-    hint: 'food delivery',
-  },
-  {
-    id: 3,
-    imageUrl: 'https://picsum.photos/seed/ad3/800/400',
-    title: 'Liburan Impian? Bisa!',
-    description: 'Paket wisata hemat ke berbagai destinasi populer. Pesan sekarang!',
-    hint: 'travel package',
-  },
-];
+declare global {
+  interface Window {
+    adsbygoogle: any;
+  }
+}
 
 export function AdvertisementSection() {
+    useEffect(() => {
+        try {
+            (window.adsbygoogle = window.adsbygoogle || []).push({});
+        } catch (err) {
+            console.error(err);
+        }
+    }, []);
+
+    const adClientId = process.env.NEXT_PUBLIC_ADMOB_APP_ID;
+    const adSlotId = process.env.NEXT_PUBLIC_ADMOB_AD_UNIT_ID;
+
+    if (!adClientId || !adSlotId) {
+        return (
+            <Card>
+                <CardContent className="p-4 text-center text-muted-foreground">
+                    ID Iklan belum dikonfigurasi.
+                </CardContent>
+            </Card>
+        );
+    }
+    
   return (
     <Card>
-      <CardContent className="p-0">
-        <Carousel className="w-full" opts={{ loop: true }}>
-          <CarouselContent>
-            {ads.map((ad) => (
-              <CarouselItem key={ad.id}>
-                <div className="relative h-64 w-full">
-                  <Image
-                    src={ad.imageUrl}
-                    alt={ad.title}
-                    fill
-                    className="object-cover rounded-lg"
-                    data-ai-hint={ad.hint}
-                  />
-                  <div className="absolute inset-0 bg-black/50 rounded-lg flex flex-col justify-end p-6">
-                    <h3 className="text-xl font-bold text-white">
-                      {ad.title}
-                    </h3>
-                    <p className="text-white/90">{ad.description}</p>
-                  </div>
-                </div>
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-          <CarouselPrevious className="absolute left-4 top-1/2 -translate-y-1/2" />
-          <CarouselNext className="absolute right-4 top-1/2 -translate-y-1/2" />
-        </Carousel>
+      <CardContent className="p-2">
+        <ins
+          className="adsbygoogle"
+          style={{ display: 'block' }}
+          data-ad-client={adClientId}
+          data-ad-slot={adSlotId}
+          data-ad-format="auto"
+          data-full-width-responsive="true"
+        ></ins>
       </CardContent>
     </Card>
   );
