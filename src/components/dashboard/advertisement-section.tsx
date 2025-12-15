@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -83,13 +82,6 @@ export function AdvertisementSection() {
             <div ref={adContainerRef} className="flex justify-center items-center">
               {/* Ad will be injected here */}
             </div>
-             {!isAdLoaded && (
-                <div className="text-center text-muted-foreground text-sm flex flex-col items-center gap-2">
-                    <AlertCircle className="w-5 h-5" />
-                    <span>Area Iklan</span>
-                    <span className="text-xs">(Jika tidak muncul, mungkin terblokir oleh Ad Blocker Anda)</span>
-                </div>
-            )}
         </div>
     );
 }
