@@ -2,7 +2,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 export function AdvertisementSection() {
@@ -97,8 +96,7 @@ export function AdvertisementSection() {
 
     
   return (
-    <Card>
-      <CardContent className="p-2 flex justify-center items-center gap-4 min-h-[60px]">
+    <div className="p-2 flex justify-center items-center gap-4 min-h-[60px]">
         {/* Container for Ad 1 */}
         <div ref={adContainerRef1} className={cn("flex justify-center items-center", { 'hidden': visibleAdIndex !== 0 })}>
           {/* Ad 1 will be injected here */}
@@ -113,7 +111,6 @@ export function AdvertisementSection() {
         <div ref={adContainerRef3} className={cn("flex justify-center items-center", { 'hidden': visibleAdIndex !== 2 })}>
           {/* Ad 3 will be injected here */}
         </div>
-      </CardContent>
-    </Card>
+    </div>
   );
 }
