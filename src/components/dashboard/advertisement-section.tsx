@@ -13,14 +13,14 @@ export function AdvertisementSection() {
     }, []);
 
     return (
-        <div className="flex w-full justify-center text-center">
+        <div className="flex w-full justify-center">
             <ins
                 className="adsbygoogle"
-                style={{ display: 'block', textAlign: 'center' }}
-                data-ad-layout="in-article"
-                data-ad-format="fluid"
+                style={{ display: 'block' }}
                 data-ad-client="ca-pub-8805948047019009"
-                data-ad-slot="3421678091"
+                data-ad-slot="4529927399"
+                data-ad-format="auto"
+                data-full-width-responsive="true"
             ></ins>
         </div>
     );
