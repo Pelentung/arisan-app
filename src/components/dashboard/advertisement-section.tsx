@@ -23,43 +23,27 @@ const adConfigs = [
 export function AdvertisementSection() {
   const [currentAdIndex, setCurrentAdIndex] = useState(0);
   const adContainerRef = useRef<HTMLDivElement>(null);
-  const [isMobileView, setIsMobileView] = useState(false);
-
-  // Cek ukuran layar saat komponen pertama kali dimuat
-  useEffect(() => {
-    const checkScreenSize = () => {
-      setIsMobileView(window.innerWidth < 468);
-    };
-    checkScreenSize();
-    window.addEventListener('resize', checkScreenSize);
-    return () => window.removeEventListener('resize', checkScreenSize);
-  }, []);
-
-  // Filter iklan yang akan ditampilkan berdasarkan ukuran layar
-  const availableAds = isMobileView 
-    ? adConfigs.filter(ad => ad.width <= 320)
-    : adConfigs;
 
   // Efek untuk mengganti iklan setiap 10 detik
   useEffect(() => {
-    if (availableAds.length > 1) {
+    if (adConfigs.length > 1) {
       const timer = setInterval(() => {
-        setCurrentAdIndex(prevIndex => (prevIndex + 1) % availableAds.length);
+        setCurrentAdIndex(prevIndex => (prevIndex + 1) % adConfigs.length);
       }, 10000); // Ganti setiap 10 detik
       return () => clearInterval(timer);
     }
-  }, [availableAds.length]);
+  }, []);
 
-  // Efek untuk memuat skrip iklan saat indeks atau daftar iklan yang tersedia berubah
+  // Efek untuk memuat skrip iklan saat indeks berubah
   useEffect(() => {
     const adContainer = adContainerRef.current;
-    if (!adContainer || availableAds.length === 0) return;
+    if (!adContainer) return;
 
     // Bersihkan kontainer dari skrip iklan sebelumnya
     adContainer.innerHTML = '';
 
-    // Ambil konfigurasi iklan saat ini dari daftar yang tersedia
-    const ad = availableAds[currentAdIndex];
+    // Ambil konfigurasi iklan saat ini
+    const ad = adConfigs[currentAdIndex];
     if (!ad) return;
 
     // Buat skrip konfigurasi
@@ -88,12 +72,13 @@ export function AdvertisementSection() {
         adContainer.innerHTML = '';
       }
     };
-  }, [currentAdIndex, availableAds]);
+  }, [currentAdIndex]);
 
   return (
     <div
       ref={adContainerRef}
       className="flex w-full justify-center my-4"
+      // Atur tinggi minimum agar tata letak tidak bergeser saat iklan berganti
       style={{ minHeight: `${Math.max(...adConfigs.map(ad => ad.height))}px` }} 
     />
   );
