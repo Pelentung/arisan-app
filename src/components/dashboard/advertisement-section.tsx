@@ -1,9 +1,8 @@
-
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
 
-// Daftar konfigurasi iklan yang akan ditampilkan bergantian
+// Daftar konfigurasi iklan
 const adConfigs = [
   {
     key: 'f52dac102624c4a42d0767b387e4d719',
@@ -24,27 +23,44 @@ const adConfigs = [
 export function AdvertisementSection() {
   const [currentAdIndex, setCurrentAdIndex] = useState(0);
   const adContainerRef = useRef<HTMLDivElement>(null);
+  const [isMobileView, setIsMobileView] = useState(false);
+
+  // Cek ukuran layar saat komponen pertama kali dimuat
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsMobileView(window.innerWidth < 468);
+    };
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
+
+  // Filter iklan yang akan ditampilkan berdasarkan ukuran layar
+  const availableAds = isMobileView 
+    ? adConfigs.filter(ad => ad.width <= 320)
+    : adConfigs;
 
   // Efek untuk mengganti iklan setiap 10 detik
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentAdIndex(prevIndex => (prevIndex + 1) % adConfigs.length);
-    }, 10000); // Ganti setiap 10 detik
+    if (availableAds.length > 1) {
+      const timer = setInterval(() => {
+        setCurrentAdIndex(prevIndex => (prevIndex + 1) % availableAds.length);
+      }, 10000); // Ganti setiap 10 detik
+      return () => clearInterval(timer);
+    }
+  }, [availableAds.length]);
 
-    // Bersihkan interval saat komponen di-unmount
-    return () => clearInterval(timer);
-  }, []);
-
-  // Efek untuk memuat skrip iklan saat indeks berubah
+  // Efek untuk memuat skrip iklan saat indeks atau daftar iklan yang tersedia berubah
   useEffect(() => {
     const adContainer = adContainerRef.current;
-    if (!adContainer) return;
+    if (!adContainer || availableAds.length === 0) return;
 
     // Bersihkan kontainer dari skrip iklan sebelumnya
     adContainer.innerHTML = '';
 
-    // Ambil konfigurasi iklan saat ini
-    const ad = adConfigs[currentAdIndex];
+    // Ambil konfigurasi iklan saat ini dari daftar yang tersedia
+    const ad = availableAds[currentAdIndex];
+    if (!ad) return;
 
     // Buat skrip konfigurasi
     const configScript = document.createElement('script');
@@ -67,19 +83,17 @@ export function AdvertisementSection() {
     invokeScript.async = true;
     adContainer.appendChild(invokeScript);
 
-    // Fungsi cleanup untuk menghapus skrip saat komponen di-unmount atau sebelum efek berikutnya berjalan
     return () => {
       if (adContainer) {
         adContainer.innerHTML = '';
       }
     };
-  }, [currentAdIndex]); // Jalankan kembali efek ini setiap kali iklan berubah
+  }, [currentAdIndex, availableAds]);
 
   return (
     <div
       ref={adContainerRef}
       className="flex w-full justify-center my-4"
-      // Mengatur tinggi minimum untuk mengakomodasi iklan terbesar
       style={{ minHeight: `${Math.max(...adConfigs.map(ad => ad.height))}px` }} 
     />
   );
