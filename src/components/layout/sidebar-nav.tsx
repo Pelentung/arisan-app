@@ -65,7 +65,7 @@ export function SidebarNav() {
           </h1>
         </div>
       </SidebarHeader>
-      <SidebarContent className="p-2">
+      <SidebarContent className="flex flex-col justify-between p-2">
         <SidebarMenu>
           {navItems.map((item) => (
             <SidebarMenuItem key={item.label}>
@@ -83,10 +83,9 @@ export function SidebarNav() {
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
-      </SidebarContent>
-      <SidebarFooter className="p-2">
-        <Separator className="my-2" />
+        
         <SidebarMenu>
+          <Separator className="my-2" />
           <SidebarMenuItem>
             <SidebarMenuButton onClick={handleSignOut} tooltip="Keluar">
               <LogOut />
@@ -94,9 +93,7 @@ export function SidebarNav() {
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-      </SidebarFooter>
+      </SidebarContent>
     </>
   );
 }
-
-    
