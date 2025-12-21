@@ -82,9 +82,6 @@ export function SidebarNav() {
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
-        </SidebarMenu>
-        
-        <SidebarMenu>
           <Separator className="my-2" />
           <SidebarMenuItem>
             <SidebarMenuButton onClick={handleSignOut} tooltip="Keluar">
@@ -93,6 +90,9 @@ export function SidebarNav() {
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
+        
+        {/* Footer is now empty */}
+        <SidebarMenu></SidebarMenu>
       </SidebarContent>
     </>
   );
